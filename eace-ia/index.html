@@ -1120,8 +1120,10 @@ async function exportar(cual){
 /* =====================================================================
    ANÁLISIS CON webR (R en el navegador)
    ===================================================================== */
-const WEBR_URL = 'https://webr.r-wasm.org/latest/webr.mjs';
-const WEBR_REPOS = ['https://cran.r-universe.dev', 'https://repo.r-wasm.org'];
+// Versión fija del motor: 'latest' puede cambiar sin aviso y dejar de calzar con los paquetes compilados.
+const WEBR_URL = 'https://webr.r-wasm.org/v0.6.0/webr.mjs';
+// Primero el repositorio oficial de webR, compilado con la misma cadena que el motor.
+const WEBR_REPOS = ['https://repo.r-wasm.org', 'https://cran.r-universe.dev'];
 const WEBR_PAQUETES = ['lavaan', 'psych', 'GPArotation', 'semTools'];
 let WR = null, WR_PAQUETES = false, WR_OCUPADO = false, ULT_STATS = null, INFORME = '';
 
@@ -1177,7 +1179,8 @@ async function prepararWebR(){
     }
     wrEscribir('\nVERIFICACIÓN (se carga cada paquete y sus dependencias compiladas)\n', 'sec');
     // Se intenta cargar cada paquete y, si falla, se muestra el mensaje real de R.
-    const revisar = ['MASS', 'lattice', 'nlme', 'mnormt', 'pbivnorm', 'numDeriv', 'quadprog'].concat(WEBR_PAQUETES);
+    // Orden de dependencias: si una biblioteca compilada falla, se ve cuál fue la primera.
+    const revisar = ['numDeriv', 'MASS', 'lattice', 'nlme', 'mnormt', 'pbivnorm', 'quadprog', 'GPArotation', 'psych', 'lavaan', 'semTools'];
     const codigoVer = 'for (p in c(' + revisar.map(p => '"' + p + '"').join(', ') + ')) { ' +
       'm <- tryCatch({ suppressPackageStartupMessages(loadNamespace(p)); "OK" }, error = function(e) conditionMessage(e)); ' +
       'v <- tryCatch(as.character(packageVersion(p)), error = function(e) "?"); ' +
@@ -1191,6 +1194,15 @@ async function prepararWebR(){
       const nombre = o.texto.trim().split(/\s+/)[0];
       if (malo && WEBR_PAQUETES.indexOf(nombre) !== -1) faltan.push(nombre);
     });
+    if (!faltan.length) {
+      // Prueba real: un modelo ordinal pequeño con WLSMV, que usa las bibliotecas compiladas.
+      wrEscribir('\nPRUEBA DE FUNCIONAMIENTO\n', 'sec');
+      const prueba = await correrR('set.seed(1); x <- as.data.frame(replicate(4, cut(rnorm(300), c(-Inf, -1, 0, 1, Inf), labels = FALSE))); names(x) <- paste0("V", 1:4)\n' +
+        'r <- tryCatch({ f <- lavaan::cfa("F =~ V1 + V2 + V3 + V4", data = x, ordered = TRUE, estimator = "WLSMV"); if (lavaan::lavInspect(f, "converged")) "OK" else "no convergió" }, error = function(e) conditionMessage(e))\n' +
+        'p <- tryCatch({ psych::polychoric(x, correct = 0); "OK" }, error = function(e) conditionMessage(e))\n' +
+        'cat("  Modelo ordinal con WLSMV (lavaan):", r, "\\n"); cat("  Correlaciones policóricas (psych):", p, "\\n")');
+      prueba.forEach(o => { const malo = o.texto.indexOf(': OK') === -1; wrEscribir(o.texto + '\n', malo ? 'err' : ''); if (malo) faltan.push('prueba de funcionamiento'); });
+    }
     if (faltan.length) throw new Error('No quedaron disponibles: ' + faltan.join(', ') + '. El registro de abajo muestra el motivo.');
     WR_PAQUETES = true;
     wrEstado('Motor listo en ' + Math.round((Date.now() - inicio) / 1000) + ' s', 'ok');
@@ -1198,7 +1210,7 @@ async function prepararWebR(){
     $('btnWRCorrer').disabled = false;
     $('btnWRInforme').disabled = false;
   } catch (e) {
-    wrEstado('No se pudo preparar el motor: ' + (e.message || e), 'error');
+    wrEstado('No se pudo preparar el motor: ' + (e.message || e) + ' Antes de reintentar, recarga la página.', 'error');
     wrEscribir('\n' + String(e.message || e) + '\n', 'err');
     $('btnWR').disabled = false;
     $('btnWRInforme').disabled = !INFORME;
