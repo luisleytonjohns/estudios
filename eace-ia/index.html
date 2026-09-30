@@ -444,6 +444,25 @@
   </div>
 </div>
 
+<script type="text/plain" id="r-quadprog">
+# Crea un paquete instalado mínimo "quadprog" (solo R, sin compilar) en la biblioteca indicada.
+crear_quadprog_sustituto <- function(lib) {
+  dir <- file.path(lib, "quadprog")
+  unlink(dir, recursive = TRUE)
+  dir.create(file.path(dir, "Meta"), recursive = TRUE); dir.create(file.path(dir, "R"))
+  desc <- c(Package = "quadprog", Version = "1.5-8", Title = "Sustituto sin compilar",
+            Description = "Sustituto minimo para cargar lavaan en el navegador.",
+            License = "GPL (>= 2)", Built = paste0("R ", getRversion(), "; ; 2026-09-30 00:00:00 UTC; unix"))
+  write.dcf(t(desc), file.path(dir, "DESCRIPTION"))
+  writeLines(c("export(solve.QP)", "export(solve.QP.compact)"), file.path(dir, "NAMESPACE"))
+  saveRDS(tools:::.split_description(tools:::.read_description(file.path(dir, "DESCRIPTION"))),
+          file.path(dir, "Meta", "package.rds"))
+  writeLines(c(
+    'solve.QP <- function(...) stop("quadprog no esta disponible en el navegador: este analisis no usa restricciones de desigualdad.")',
+    'solve.QP.compact <- solve.QP'), file.path(dir, "R", "quadprog"))
+  invisible(dir)
+}
+</script>
 <script type="text/plain" id="r-preparar">
 # Preparación común: lectura, filtro, exclusiones, inversión y puntajes.
 # Espera: RUTA_DATOS, RUTA_DIC, DURACION_MINIMA, LONGSTRING_MAX
@@ -1170,6 +1189,13 @@ async function prepararWebR(){
     (await correrR('cat(R.version.string, "\\n")')).forEach(o => wrEscribir('  ' + o.texto + '\n'));
     wrEscribir('  Repositorios: ' + WEBR_REPOS.join(', ') + '\n\n');
     const repos = 'c(' + WEBR_REPOS.map(r => '"' + r + '"').join(', ') + ')';
+    // psych calcula en paralelo creando procesos, cosa que el navegador no permite: un solo núcleo.
+    await correrR('options(mc.cores = 1)');
+    // quadprog no está compilado para esta versión de R y lavaan lo exige para cargar.
+    // Solo se usa en modelos con restricciones de desigualdad, que este análisis no tiene,
+    // así que se instala un sustituto mínimo sin compilar.
+    const qp = await correrR($('r-quadprog').textContent + '\nif (!requireNamespace("quadprog", quietly = TRUE)) { crear_quadprog_sustituto(.libPaths()[1]); cat("  quadprog: se instaló el sustituto sin compilar (no se usan restricciones de desigualdad)\\n") } else cat("  quadprog: disponible\\n")');
+    qp.forEach(o => wrEscribir(o.texto + '\n', o.tipo === 'stderr' ? 'err' : ''));
     // Se instala paquete por paquete y se muestra el registro completo:
     // si algo falla, queda a la vista qué paquete y qué dirección.
     for (const pkg of WEBR_PAQUETES) {
