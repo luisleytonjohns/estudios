@@ -1121,7 +1121,7 @@ async function exportar(cual){
    ANÁLISIS CON webR (R en el navegador)
    ===================================================================== */
 const WEBR_URL = 'https://webr.r-wasm.org/latest/webr.mjs';
-const WEBR_REPOS = ['https://repo.r-wasm.org', 'https://cran.r-universe.dev'];
+const WEBR_REPOS = ['https://cran.r-universe.dev', 'https://repo.r-wasm.org'];
 const WEBR_PAQUETES = ['lavaan', 'psych', 'GPArotation', 'semTools'];
 let WR = null, WR_PAQUETES = false, WR_OCUPADO = false, ULT_STATS = null, INFORME = '';
 
@@ -1145,7 +1145,7 @@ async function correrR(codigo){
   const sh = await new WR.Shelter();
   try {
     const r = await sh.captureR(codigo, { withAutoprint: true, captureStreams: true, captureConditions: false });
-    return r.output.map(o => ({ tipo: o.type, texto: String(o.data) }));
+    return r.output.filter(o => typeof o.data === 'string').map(o => ({ tipo: o.type, texto: o.data }));
   } finally {
     sh.purge();
   }
@@ -1154,6 +1154,8 @@ async function correrR(codigo){
 async function prepararWebR(){
   if (WR_OCUPADO) return;
   WR_OCUPADO = true; $('btnWR').disabled = true;
+  $('wrSalida').innerHTML = ''; INFORME = '';
+  const inicio = Date.now();
   try {
     if (!WR) {
       wrEstado('Descargando el motor de R…', '', true);
@@ -1161,19 +1163,33 @@ async function prepararWebR(){
       WR = new mod.WebR({ channelType: mod.ChannelType.PostMessage });
       await WR.init();
     }
-    wrEstado('Instalando lavaan, psych, GPArotation y semTools…', '', true);
-    const repos = WEBR_REPOS.map(r => '"' + r + '"').join(', ');
-    const pkgs = WEBR_PAQUETES.map(p => '"' + p + '"').join(', ');
-    await correrR('webr::install(c(' + pkgs + '), repos = c(' + repos + '), quiet = TRUE)');
-    const ok = await correrR('cat(all(sapply(c(' + pkgs + '), requireNamespace, quietly = TRUE)))');
-    if (!ok.some(o => o.texto.indexOf('TRUE') !== -1)) throw new Error('No se pudieron cargar todos los paquetes estadísticos.');
+    wrEscribir('PREPARACIÓN DEL MOTOR DE ANÁLISIS\n\n', 'sec');
+    (await correrR('cat(R.version.string, "\\n")')).forEach(o => wrEscribir('  ' + o.texto + '\n'));
+    wrEscribir('  Repositorios: ' + WEBR_REPOS.join(', ') + '\n\n');
+    const repos = 'c(' + WEBR_REPOS.map(r => '"' + r + '"').join(', ') + ')';
+    // Se instala paquete por paquete y se muestra el registro completo:
+    // si algo falla, queda a la vista qué paquete y qué dirección.
+    for (const pkg of WEBR_PAQUETES) {
+      wrEstado('Instalando ' + pkg + '…', '', true);
+      wrEscribir('Instalando ' + pkg + '\n', 'sec');
+      const out = await correrR('if (!requireNamespace("' + pkg + '", quietly = TRUE)) webr::install("' + pkg + '", repos = ' + repos + ', quiet = FALSE) else cat("  ya estaba instalado\\n")');
+      out.forEach(o => wrEscribir('  ' + o.texto + '\n', o.tipo === 'stderr' ? 'err' : ''));
+    }
+    wrEscribir('\nVERIFICACIÓN\n', 'sec');
+    const res = await correrR('for (p in c(' + WEBR_PAQUETES.map(p => '"' + p + '"').join(', ') + ')) cat(p, if (requireNamespace(p, quietly = TRUE)) "disponible" else "NO DISPONIBLE", "\\n")');
+    const faltan = [];
+    res.forEach(o => { wrEscribir('  ' + o.texto + '\n', o.texto.indexOf('NO DISPONIBLE') !== -1 ? 'err' : ''); if (o.texto.indexOf('NO DISPONIBLE') !== -1) faltan.push(o.texto.split(' ')[0]); });
+    if (faltan.length) throw new Error('No quedaron disponibles: ' + faltan.join(', ') + '. El registro de abajo muestra el motivo.');
     WR_PAQUETES = true;
-    wrEstado('Motor listo', 'ok');
+    wrEstado('Motor listo en ' + Math.round((Date.now() - inicio) / 1000) + ' s', 'ok');
     $('btnWR').textContent = 'Motor listo';
     $('btnWRCorrer').disabled = false;
+    $('btnWRInforme').disabled = false;
   } catch (e) {
-    wrEstado('No se pudo preparar el motor: ' + (e.message || e) + ' Revisa la conexión e intenta nuevamente.', 'error');
+    wrEstado('No se pudo preparar el motor: ' + (e.message || e), 'error');
+    wrEscribir('\n' + String(e.message || e) + '\n', 'err');
     $('btnWR').disabled = false;
+    $('btnWRInforme').disabled = !INFORME;
   }
   WR_OCUPADO = false;
 }
