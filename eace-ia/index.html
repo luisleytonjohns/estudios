@@ -1121,7 +1121,8 @@ async function exportar(cual){
    ANÁLISIS CON webR (R en el navegador)
    ===================================================================== */
 // Versión fija del motor: 'latest' puede cambiar sin aviso y dejar de calzar con los paquetes compilados.
-const WEBR_URL = 'https://webr.r-wasm.org/v0.6.0/webr.mjs';
+// La 0.6.0 no carga bibliotecas compiladas en Fortran (mnormt, pbivnorm, quadprog); la 0.5.9 usa R 4.5.
+const WEBR_URL = 'https://webr.r-wasm.org/v0.5.9/webr.mjs';
 // Primero el repositorio oficial de webR, compilado con la misma cadena que el motor.
 const WEBR_REPOS = ['https://repo.r-wasm.org', 'https://cran.r-universe.dev'];
 const WEBR_PAQUETES = ['lavaan', 'psych', 'GPArotation', 'semTools'];
@@ -1194,14 +1195,14 @@ async function prepararWebR(){
       const nombre = o.texto.trim().split(/\s+/)[0];
       if (malo && WEBR_PAQUETES.indexOf(nombre) !== -1) faltan.push(nombre);
     });
-    if (!faltan.length) {
-      // Prueba real: un modelo ordinal pequeño con WLSMV, que usa las bibliotecas compiladas.
+    {
+      // Prueba real (corre siempre, para saber qué parte del análisis funciona): un modelo ordinal pequeño con WLSMV, que usa las bibliotecas compiladas.
       wrEscribir('\nPRUEBA DE FUNCIONAMIENTO\n', 'sec');
       const prueba = await correrR('set.seed(1); x <- as.data.frame(replicate(4, cut(rnorm(300), c(-Inf, -1, 0, 1, Inf), labels = FALSE))); names(x) <- paste0("V", 1:4)\n' +
         'r <- tryCatch({ f <- lavaan::cfa("F =~ V1 + V2 + V3 + V4", data = x, ordered = TRUE, estimator = "WLSMV"); if (lavaan::lavInspect(f, "converged")) "OK" else "no convergió" }, error = function(e) conditionMessage(e))\n' +
         'p <- tryCatch({ psych::polychoric(x, correct = 0); "OK" }, error = function(e) conditionMessage(e))\n' +
         'cat("  Modelo ordinal con WLSMV (lavaan):", r, "\\n"); cat("  Correlaciones policóricas (psych):", p, "\\n")');
-      prueba.forEach(o => { const malo = o.texto.indexOf(': OK') === -1; wrEscribir(o.texto + '\n', malo ? 'err' : ''); if (malo) faltan.push('prueba de funcionamiento'); });
+      prueba.forEach(o => { const malo = o.texto.indexOf(': OK') === -1; wrEscribir(o.texto + '\n', malo ? 'err' : ''); if (malo && faltan.indexOf('prueba de funcionamiento') === -1) faltan.push('prueba de funcionamiento'); });
     }
     if (faltan.length) throw new Error('No quedaron disponibles: ' + faltan.join(', ') + '. El registro de abajo muestra el motivo.');
     WR_PAQUETES = true;
