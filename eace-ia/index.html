@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
+<title>Estudio sobre IA y trabajo académico</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+<script>
+  /* ================================================================
+     ÚNICO DATO QUE SE CONFIGURA A MANO:
+     la dirección de la aplicación web de Apps Script (termina en /exec).
+     El navegador la usa solo por detrás; nunca aparece en la barra.
+     ================================================================ */
+  const API_URL = "https://script.google.com/macros/s/AKfycbxri3bhuvpSnO_5CS0t3XwglslY3Z2CaL1rAF4OC5Ep5IfmJZhxo8C3VbD1L_9QzQCR/exec";
+</script>
+
+<style>
+  :root{
+    --azul:#0F2D4A; --azul-iso:#16385A; --campo:#3E6D8C; --naranja:#E96A2B;
+    --arena:#E9E2D4; --fondo:#F7F8FA; --tinta:#44515C; --tenue:#7B8794;
+    --verde:#2D6A4F; --rojo:#B4472A; --blanco:#FFFFFF;
+    --borde:#DDE3E9; --borde-suave:#EBEFF3; --campo-suave:#EAF1F6; --naranja-suave:#FCEEE6;
+    --radio:10px; --sombra:0 1px 2px rgba(15,45,74,.06),0 4px 16px rgba(15,45,74,.05);
+    --titulo:'Poppins',system-ui,sans-serif; --texto:'IBM Plex Sans',system-ui,sans-serif; --mono:'IBM Plex Mono',ui-monospace,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{-webkit-text-size-adjust:100%}
+  body{background:var(--fondo);color:var(--tinta);font:400 16px/1.6 var(--texto);min-height:100vh;display:flex;flex-direction:column}
+  h1,h2,h3,h4{font-family:var(--titulo);color:var(--azul);line-height:1.25;font-weight:600}
+  button{font-family:var(--texto);cursor:pointer}
+  button:disabled{cursor:not-allowed}
+  .oculto{display:none!important}
+
+  /* Encabezado */
+  .cabecera{background:var(--azul);color:#fff;border-bottom:3px solid var(--naranja)}
+  .cabecera .marco{max-width:880px;margin:0 auto;padding:14px 16px;display:flex;align-items:center;gap:14px}
+  .iso{flex:0 0 auto;width:42px;height:42px;border-radius:10px;background:var(--azul-iso);position:relative;display:flex;align-items:flex-start;justify-content:center;padding-top:7px;font:700 15px/1 var(--titulo);color:#fff;letter-spacing:.5px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.08)}
+  .iso::after{content:"";position:absolute;left:50%;bottom:7px;width:16px;height:8px;margin-left:-8px;border:2.5px solid var(--naranja);border-bottom:none;border-radius:10px 10px 0 0}
+  .cabecera .rotulo{font:500 11px/1.3 var(--texto);letter-spacing:1.4px;text-transform:uppercase;color:#B9C9D8}
+  .cabecera h1{color:#fff;font-size:17px;margin-top:2px}
+  @media(min-width:640px){.cabecera h1{font-size:20px}}
+
+  main{flex:1;width:100%;max-width:880px;margin:0 auto;padding:20px 16px 40px}
+  .tarjeta{background:var(--blanco);border:1px solid var(--borde);border-radius:var(--radio);box-shadow:var(--sombra);padding:22px 18px}
+  @media(min-width:640px){.tarjeta{padding:30px 34px}}
+  .tarjeta + .tarjeta{margin-top:16px}
+  .eyebrow{font:600 11px/1 var(--texto);letter-spacing:1.4px;text-transform:uppercase;color:var(--campo);margin-bottom:8px}
+  h2.titulo{font-size:22px;margin-bottom:6px}
+  .bajada{color:var(--tenue);font-size:14.5px}
+
+  /* Botones */
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:none;border-radius:8px;padding:12px 22px;font-weight:600;font-size:15px;transition:background .15s,opacity .15s,border-color .15s}
+  .btn-primario{background:var(--naranja);color:#fff}
+  .btn-primario:hover:not(:disabled){background:#D45C20}
+  .btn-primario:disabled{opacity:.4}
+  .btn-secundario{background:#fff;color:var(--azul);border:1.5px solid var(--borde)}
+  .btn-secundario:hover:not(:disabled){border-color:var(--campo)}
+  .btn-azul{background:var(--azul);color:#fff}
+  .btn-azul:hover:not(:disabled){background:#163b5f}
+  .btn-texto{background:none;border:none;color:var(--tenue);font-size:13.5px;text-decoration:underline;text-underline-offset:3px;padding:6px}
+  .btn-texto:hover{color:var(--rojo)}
+  .btn-bloque{width:100%}
+  .acciones{display:flex;flex-direction:column-reverse;gap:10px;margin-top:24px}
+  @media(min-width:640px){.acciones{flex-direction:row;justify-content:space-between;align-items:center}}
+
+  /* Consentimiento */
+  .consentimiento{border:1px solid var(--borde-suave);background:#FBFCFD;border-radius:8px;padding:6px 18px 18px;margin-top:18px;max-height:52vh;overflow-y:auto;font-size:15px}
+  .consentimiento h4{font-size:14.5px;margin:16px 0 4px}
+  .consentimiento p{margin-bottom:6px;text-align:justify;hyphens:auto}
+  .casilla{display:flex;gap:12px;align-items:flex-start;padding:12px 14px;border:1.5px solid var(--borde);border-radius:8px;margin-top:12px;cursor:pointer;font-weight:500;color:var(--azul);transition:border-color .15s,background .15s}
+  .casilla input{width:20px;height:20px;margin-top:2px;accent-color:var(--azul);flex:0 0 auto}
+  .casilla:has(input:checked){border-color:var(--campo);background:var(--campo-suave)}
+
+  /* Progreso */
+  .progreso{position:sticky;top:0;z-index:5;background:var(--fondo);padding:10px 0 12px;margin:-4px 0 6px}
+  .progreso .datos{display:flex;justify-content:space-between;font-size:13px;color:var(--tenue);margin-bottom:6px}
+  .progreso .datos b{color:var(--azul);font-weight:600}
+  .barra{height:6px;background:var(--borde-suave);border-radius:6px;overflow:hidden}
+  .barra > span{display:block;height:100%;width:0;background:var(--naranja);border-radius:6px;transition:width .35s ease}
+
+  /* Preguntas */
+  .instruccion{background:var(--campo-suave);border-left:3px solid var(--campo);border-radius:0 8px 8px 0;padding:10px 14px;font-size:14.5px;color:var(--azul);margin-bottom:18px}
+  .pregunta{padding:18px 0;border-top:1px solid var(--borde-suave)}
+  .instruccion + .pregunta{border-top:none;padding-top:4px}
+  .pregunta .enunciado{display:flex;gap:10px;font-weight:500;color:var(--azul);font-size:15.5px;line-height:1.5}
+  .pregunta .num{font:500 12.5px/1.9 var(--mono);color:var(--campo);flex:0 0 auto;min-width:22px}
+  .pregunta.falta{background:linear-gradient(90deg,var(--naranja-suave),transparent 70%);border-radius:6px;padding-left:10px;margin-left:-10px}
+  .pregunta.falta .enunciado::after{content:"Falta responder";font:600 11px/2 var(--texto);color:var(--rojo);margin-left:auto;white-space:nowrap;padding-left:8px}
+  .opciones{display:grid;grid-template-columns:1fr;gap:6px;margin-top:12px}
+  @media(min-width:640px){.opciones{grid-template-columns:repeat(5,1fr);gap:8px}}
+  .opcion{position:relative}
+  .opcion input{position:absolute;opacity:0;pointer-events:none}
+  .opcion label{display:flex;align-items:center;gap:10px;min-height:44px;padding:9px 12px;border:1.5px solid var(--borde);border-radius:8px;cursor:pointer;font-size:14px;line-height:1.3;color:var(--tinta);background:#fff;transition:border-color .12s,background .12s,color .12s;user-select:none}
+  @media(min-width:640px){.opcion label{flex-direction:column;justify-content:center;text-align:center;gap:4px;min-height:72px;padding:8px 6px;font-size:12.5px}}
+  .opcion label .v{font:500 12px/1 var(--mono);color:var(--tenue);width:20px;height:20px;border:1.5px solid var(--borde);border-radius:50%;display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto}
+  .opcion label:hover{border-color:var(--campo)}
+  .opcion input:checked + label{border-color:var(--azul);background:var(--azul);color:#fff}
+  .opcion input:checked + label .v{border-color:var(--naranja);background:var(--naranja);color:#fff}
+  .opcion input:focus-visible + label{outline:2px solid var(--naranja);outline-offset:2px}
+
+  /* Clasificación */
+  .campo{margin-top:20px}
+  .campo > .etiqueta{display:block;font-weight:600;color:var(--azul);font-size:15px;margin-bottom:8px}
+  .campo .ayuda{font-size:13px;color:var(--tenue);margin-top:-4px;margin-bottom:8px}
+  .campo.falta > .etiqueta::after{content:" · falta responder";color:var(--rojo);font-weight:500;font-size:13px}
+  .opciones.lista{grid-template-columns:1fr}
+  @media(min-width:640px){.opciones.lista{grid-template-columns:repeat(auto-fit,minmax(180px,1fr))}.opciones.lista .opcion label{flex-direction:row;text-align:left;min-height:48px;font-size:14px;justify-content:flex-start}}
+  input.numero{width:120px;padding:11px 12px;border:1.5px solid var(--borde);border-radius:8px;font:500 16px var(--texto);color:var(--azul)}
+  input.numero:focus{outline:none;border-color:var(--campo)}
+
+  /* Mensajes */
+  .centro{text-align:center;padding:14px 0}
+  .sello{width:60px;height:60px;border-radius:50%;margin:0 auto 16px;display:flex;align-items:center;justify-content:center;font:700 26px var(--titulo)}
+  .sello.ok{background:#E3F0E9;color:var(--verde)}
+  .sello.info{background:var(--campo-suave);color:var(--campo)}
+  .sello.alerta{background:#F7E6E1;color:var(--rojo)}
+  .aviso{border-radius:8px;padding:12px 14px;font-size:14px;margin-top:16px}
+  .aviso.error{background:#F7E6E1;color:var(--rojo);border:1px solid #EACBC2}
+  .aviso.info{background:var(--campo-suave);color:var(--azul);border:1px solid #D3E1EB}
+  .cargando{display:flex;align-items:center;justify-content:center;gap:12px;padding:40px 0;color:var(--tenue)}
+  .giro{width:22px;height:22px;border:2.5px solid var(--borde);border-top-color:var(--naranja);border-radius:50%;animation:g .8s linear infinite}
+  @keyframes g{to{transform:rotate(360deg)}}
+
+  /* Modal de confirmación */
+  .velo{position:fixed;inset:0;background:rgba(15,45,74,.55);display:flex;align-items:center;justify-content:center;padding:16px;z-index:50}
+  .velo .tarjeta{max-width:440px;width:100%}
+
+  /* Panel del investigador */
+  .panel-grid{display:grid;grid-template-columns:1fr;gap:16px;margin-top:16px}
+  @media(min-width:760px){.panel-grid.dos{grid-template-columns:1fr 1fr}}
+  .panel-grid > .tarjeta{margin-top:0;min-width:0}
+  .kpis{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+  @media(min-width:640px){.kpis{grid-template-columns:repeat(5,1fr)}}
+  .kpi{background:#fff;border:1px solid var(--borde);border-radius:8px;padding:12px 14px}
+  .kpi .n{font:700 24px/1.1 var(--titulo);color:var(--azul)}
+  .kpi .t{font-size:12px;color:var(--tenue);margin-top:4px;line-height:1.3}
+  .sec-titulo{font-size:15px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;gap:10px}
+  .estado{display:inline-flex;align-items:center;gap:8px;font-weight:600;font-size:14px}
+  .estado::before{content:"";width:10px;height:10px;border-radius:50%;background:currentColor}
+  .estado.abierta{color:var(--verde)} .estado.cerrada{color:var(--rojo)}
+  .interruptor{position:relative;width:52px;height:30px;border-radius:30px;border:none;background:var(--borde);transition:background .2s;flex:0 0 auto}
+  .interruptor::after{content:"";position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.2);transition:transform .2s}
+  .interruptor.on{background:var(--verde)} .interruptor.on::after{transform:translateX(22px)}
+  .fila-flex{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+  .enlace{font:400 13px var(--mono);background:var(--fondo);border:1px solid var(--borde);border-radius:6px;padding:9px 10px;width:100%;color:var(--azul)}
+  #qr{display:flex;justify-content:center;padding:14px;background:#fff;border:1px solid var(--borde-suave);border-radius:8px;margin-top:10px}
+  .barras-inst .item{margin-bottom:10px;font-size:13.5px}
+  .barras-inst .item .fila-flex{margin-bottom:4px}
+  .tabla-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  table{border-collapse:collapse;width:100%;font-size:13px}
+  th,td{padding:7px 8px;border-bottom:1px solid var(--borde-suave);text-align:left;white-space:nowrap}
+  th{font:600 11.5px var(--texto);color:var(--tenue);text-transform:uppercase;letter-spacing:.5px}
+  td.num,th.num{text-align:right;font-family:var(--mono)}
+  .etq{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11.5px;font-weight:600}
+  .etq.bien{background:#E3F0E9;color:var(--verde)} .etq.medio{background:#FBF0DA;color:#8A5A12} .etq.mal{background:#F7E6E1;color:var(--rojo)} .etq.nd{background:var(--borde-suave);color:var(--tenue)}
+  .matriz td{text-align:center;font-family:var(--mono);font-size:12px;min-width:52px}
+  .matriz th{text-align:center}
+  .matriz th.lat{text-align:left}
+  .ritmo{display:flex;align-items:flex-end;gap:3px;height:90px;padding-top:6px}
+  .ritmo span{flex:1;background:var(--campo);border-radius:3px 3px 0 0;min-height:2px;position:relative}
+  .ritmo span.hoy{background:var(--naranja)}
+  .ritmo-ejes{display:flex;justify-content:space-between;font:400 11px var(--mono);color:var(--tenue);margin-top:4px}
+  .nota{font-size:12.5px;color:var(--tenue);margin-top:10px;line-height:1.5}
+  .login{max-width:420px;margin:30px auto 0}
+  .login input{width:100%;padding:12px 14px;border:1.5px solid var(--borde);border-radius:8px;font:16px var(--texto);margin:14px 0 12px}
+  .login input:focus{outline:none;border-color:var(--campo)}
+
+  footer{text-align:center;padding:18px 16px 24px;font-size:12.5px;color:var(--tenue)}
+  footer a{color:var(--campo)}
+</style>
+</head>
+<body>
+
+<header class="cabecera">
+  <div class="marco">
+    <div class="iso" aria-hidden="true">EA</div>
+    <div>
+      <div class="rotulo" id="rotulo">Estudio de investigación académica</div>
+      <h1 id="tituloPublico">Uso de inteligencia artificial en el trabajo académico</h1>
+    </div>
+  </div>
+</header>
+
+<main>
+  <!-- Carga inicial -->
+  <section id="vCarga"><div class="cargando"><div class="giro"></div>Cargando el estudio…</div></section>
+
+  <!-- Error de conexión -->
+  <section id="vError" class="oculto">
+    <div class="tarjeta centro">
+      <div class="sello alerta">!</div>
+      <h2 class="titulo">No fue posible cargar el estudio</h2>
+      <p class="bajada" id="txtError">Revisa tu conexión e intenta nuevamente.</p>
+      <div style="margin-top:20px"><button class="btn btn-secundario" onclick="location.reload()">Reintentar</button></div>
+    </div>
+  </section>
+
+  <!-- Estudio cerrado -->
+  <section id="vCerrado" class="oculto">
+    <div class="tarjeta centro">
+      <div class="sello info">i</div>
+      <h2 class="titulo">Toma de datos cerrada</h2>
+      <p class="bajada" id="txtCierre"></p>
+    </div>
+  </section>
+
+  <!-- Consentimiento informado -->
+  <section id="vConsent" class="oculto">
+    <div class="tarjeta">
+      <div class="eyebrow">Consentimiento informado</div>
+      <h2 class="titulo">Antes de comenzar</h2>
+      <p class="bajada">Lee la siguiente información. Solo si estás de acuerdo podrás acceder al cuestionario.</p>
+      <div class="consentimiento" id="txtConsent"></div>
+      <label class="casilla"><input type="checkbox" id="chkEdad"> Declaro tener 18 años o más.</label>
+      <label class="casilla"><input type="checkbox" id="chkAcepta"> He leído la información anterior y acepto participar voluntariamente en este estudio.</label>
+      <div class="acciones">
+        <button class="btn-texto" onclick="noParticipar()">No deseo participar</button>
+        <button class="btn btn-primario" id="btnComenzar" disabled onclick="comenzar()">Comenzar el cuestionario</button>
+      </div>
+      <p class="nota" id="notaVersion"></p>
+    </div>
+  </section>
+
+  <!-- Cuestionario -->
+  <section id="vEncuesta" class="oculto">
+    <div class="progreso">
+      <div class="datos"><span id="txtSeccion">Sección 1</span><span><b id="txtAvance">0%</b> completado</span></div>
+      <div class="barra"><span id="barraAvance"></span></div>
+    </div>
+    <div class="tarjeta" id="pagina"></div>
+    <div class="acciones">
+      <button class="btn-texto" onclick="pedirRetiro()">Retirarme del estudio</button>
+      <div style="display:flex;gap:10px">
+        <button class="btn btn-secundario" id="btnAnterior" onclick="irPagina(-1)">Anterior</button>
+        <button class="btn btn-primario" id="btnSiguiente" onclick="irPagina(1)" style="flex:1">Siguiente</button>
+      </div>
+    </div>
+    <div id="avisoEnvio"></div>
+  </section>
+
+  <!-- Agradecimiento -->
+  <section id="vGracias" class="oculto">
+    <div class="tarjeta centro">
+      <div class="sello ok">✓</div>
+      <h2 class="titulo">Respuestas registradas</h2>
+      <p class="bajada" id="txtGracias">Muchas gracias por tu tiempo. Tus respuestas se guardaron de forma anónima y ya puedes cerrar esta página.</p>
+    </div>
+  </section>
+
+  <!-- Retiro o no participación -->
+  <section id="vRetiro" class="oculto">
+    <div class="tarjeta centro">
+      <div class="sello info">i</div>
+      <h2 class="titulo" id="tituloRetiro">Participación finalizada</h2>
+      <p class="bajada">No se guardó ninguna respuesta. Gracias por tu tiempo; ya puedes cerrar esta página.</p>
+    </div>
+  </section>
+
+  <!-- ================= PANEL DEL INVESTIGADOR (#investigador) ================= -->
+  <section id="vAdmin" class="oculto">
+    <div id="adminLogin" class="tarjeta login">
+      <div class="eyebrow">Acceso restringido</div>
+      <h2 class="titulo">Panel del investigador</h2>
+      <input type="password" id="clave" placeholder="Clave del investigador" autocomplete="current-password" onkeydown="if(event.key==='Enter')ingresar()">
+      <button class="btn btn-azul btn-bloque" id="btnIngresar" onclick="ingresar()">Ingresar</button>
+      <div id="avisoLogin"></div>
+    </div>
+
+    <div id="adminPanel" class="oculto">
+      <div class="fila-flex" style="margin-bottom:6px">
+        <div>
+          <div class="eyebrow">Panel del investigador</div>
+          <h2 class="titulo" style="margin:0">Estado de la toma de datos</h2>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-secundario" onclick="cargarEstadisticas()">Actualizar</button>
+          <button class="btn btn-secundario" onclick="salir()">Salir</button>
+        </div>
+      </div>
+      <div id="avisoPanel"></div>
+
+      <div class="panel-grid dos">
+        <div class="tarjeta">
+          <h3 class="sec-titulo">Recepción de respuestas</h3>
+          <div class="fila-flex">
+            <span id="lblEstado" class="estado"></span>
+            <button class="interruptor" id="swEstado" onclick="alternarEstado()" aria-label="Abrir o cerrar la toma de datos"></button>
+          </div>
+          <p class="nota">Al cerrar, quienes estén respondiendo no podrán enviar. Conviene cerrar fuera de los horarios de aplicación.</p>
+        </div>
+        <div class="tarjeta">
+          <h3 class="sec-titulo">Difusión <button class="btn-texto" onclick="descargarQR()">Descargar QR</button></h3>
+          <input class="enlace" id="urlPublica" readonly onclick="this.select()">
+          <div id="qr"></div>
+        </div>
+      </div>
+
+      <div class="tarjeta" style="margin-top:16px">
+        <h3 class="sec-titulo">Muestra</h3>
+        <div class="kpis">
+          <div class="kpi"><div class="n" id="kConsent">0</div><div class="t">Consentimientos aceptados</div></div>
+          <div class="kpi"><div class="n" id="kEnvios">0</div><div class="t">Envíos completos</div></div>
+          <div class="kpi"><div class="n" id="kUsuarios">0</div><div class="t">Usan IA (muestra analizable)</div></div>
+          <div class="kpi"><div class="n" id="kNoUsuarios">0</div><div class="t">No usan IA</div></div>
+          <div class="kpi"><div class="n" id="kTasa">-</div><div class="t">Tasa de finalización</div></div>
+        </div>
+        <div class="barras-inst" id="barrasInst" style="margin-top:18px"></div>
+      </div>
+
+      <div class="panel-grid dos">
+        <div class="tarjeta">
+          <h3 class="sec-titulo">Calidad de las respuestas</h3>
+          <div class="tabla-wrap"><table id="tblCalidad"></table></div>
+          <p class="nota">Son marcas de revisión, no exclusiones. Los criterios de exclusión se aplican en el script de R y deben quedar declarados antes de analizar.</p>
+        </div>
+        <div class="tarjeta">
+          <h3 class="sec-titulo">Envíos por día</h3>
+          <div class="ritmo" id="ritmo"></div>
+          <div class="ritmo-ejes"><span id="ritmoIni"></span><span>hoy</span></div>
+        </div>
+      </div>
+
+      <div class="tarjeta" style="margin-top:16px">
+        <h3 class="sec-titulo">Consistencia interna por dimensión</h3>
+        <div class="tabla-wrap"><table id="tblAlfa"></table></div>
+        <p class="nota">Alfa de Cronbach calculado con los ítems inversos ya recodificados según la hoja REACTIVOS. Es un monitor de la toma de datos; el análisis formal usa omega ordinal en R.</p>
+      </div>
+
+      <div class="tarjeta" style="margin-top:16px">
+        <h3 class="sec-titulo">Correlaciones entre puntajes compuestos</h3>
+        <div class="tabla-wrap"><table class="matriz" id="tblCor"></table></div>
+        <p class="nota">Pearson sobre promedios de cada dimensión. D5 se puntúa en sentido de retención, por lo que se espera que correlacione en negativo con D1 a D4.</p>
+      </div>
+
+      <div class="tarjeta" style="margin-top:16px">
+        <h3 class="sec-titulo">Exportación</h3>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <button class="btn btn-azul" onclick="exportar('datos')">Descargar datos (CSV)</button>
+          <button class="btn btn-secundario" onclick="exportar('diccionario')">Descargar diccionario (CSV)</button>
+        </div>
+        <p class="nota">Los datos se exportan crudos, sin invertir. El diccionario indica qué ítems son inversos y lo lee el script de R.</p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer id="pie">Participación anónima y voluntaria</footer>
+
+<!-- Confirmación -->
+<div class="velo oculto" id="velo">
+  <div class="tarjeta">
+    <h3 id="veloTitulo" style="font-size:18px;margin-bottom:8px"></h3>
+    <p id="veloTexto" style="font-size:14.5px"></p>
+    <div class="acciones" style="margin-top:20px">
+      <button class="btn btn-secundario" id="veloNo">Volver</button>
+      <button class="btn btn-primario" id="veloSi">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* =====================================================================
+   ESTADO GENERAL
+   ===================================================================== */
+const CLAVE_SESION = 'eaceia_sesion_v2';
+let CFG = null;
+let PAGINAS = [];
+let S = { etapa: 'consent', pagina: 0, perfil: {}, respuestas: {}, inicio: null };
+
+const $ = id => document.getElementById(id);
+const VISTAS = ['vCarga','vError','vCerrado','vConsent','vEncuesta','vGracias','vRetiro','vAdmin'];
+function mostrar(v){ VISTAS.forEach(x => $(x).classList.toggle('oculto', x !== v)); window.scrollTo({top:0}); }
+function guardarSesion(){ try{ sessionStorage.setItem(CLAVE_SESION, JSON.stringify(S)); }catch(e){} }
+function borrarSesion(){ try{ sessionStorage.removeItem(CLAVE_SESION); }catch(e){} }
+function el(tag, attrs, hijos){
+  const n = document.createElement(tag);
+  if (attrs) Object.entries(attrs).forEach(([k,v]) => {
+    if (k === 'class') n.className = v; else if (k === 'text') n.textContent = v; else n.setAttribute(k, v);
+  });
+  (hijos || []).forEach(h => h && n.appendChild(h));
+  return n;
+}
+
+/* Comunicación con el motor de datos. Content-Type text/plain evita la
+   verificación previa del navegador y permite leer la respuesta. */
+async function api(accion, datos){
+  const r = await fetch(API_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify(Object.assign({ action: accion }, datos || {}))
+  });
+  if (!r.ok) throw new Error('Error de comunicación (' + r.status + ').');
+  return r.json();
+}
+
+/* =====================================================================
+   ARRANQUE
+   ===================================================================== */
+window.addEventListener('DOMContentLoaded', iniciar);
+window.addEventListener('hashchange', () => location.reload());
+
+async function iniciar(){
+  if (!/^https:\/\/script\.google\.com\//.test(API_URL)) {
+    $('txtError').textContent = 'Falta configurar la dirección del motor de datos (API_URL) en index.html.';
+    mostrar('vError'); return;
+  }
+  if (location.hash === '#investigador') { iniciarAdmin(); return; }
+
+  try {
+    const r = await fetch(API_URL + '?action=config');
+    CFG = await r.json();
+    if (!CFG.ok) throw new Error(CFG.error || 'Respuesta no válida.');
+  } catch (e) {
+    $('txtError').textContent = 'No fue posible conectar con el servidor del estudio. Revisa tu conexión e intenta nuevamente.';
+    mostrar('vError'); return;
+  }
+
+  if (CFG.tituloPublico) { $('tituloPublico').textContent = CFG.tituloPublico; document.title = CFG.tituloPublico; }
+  if (CFG.correoContacto) {
+    $('pie').innerHTML = '';
+    $('pie').append('Participación anónima y voluntaria · Consultas: ');
+    $('pie').appendChild(el('a', { href: 'mailto:' + CFG.correoContacto, text: CFG.correoContacto }));
+  }
+  construirPaginas();
+
+  if (!CFG.abierta) { $('txtCierre').textContent = CFG.mensajeCierre; mostrar('vCerrado'); return; }
+
+  try { const g = JSON.parse(sessionStorage.getItem(CLAVE_SESION) || 'null'); if (g && g.etapa === 'encuesta') S = g; } catch(e){}
+  if (S.etapa === 'encuesta') { mostrar('vEncuesta'); pintarPagina(); return; }
+
+  pintarConsentimiento();
+  mostrar('vConsent');
+}
+
+/* =====================================================================
+   CONSENTIMIENTO
+   ===================================================================== */
+function pintarConsentimiento(){
+  const cont = $('txtConsent'); cont.innerHTML = '';
+  let parrafo = [];
+  const cerrar = () => { if (parrafo.length) { cont.appendChild(el('p', { text: parrafo.join(' ') })); parrafo = []; } };
+  String(CFG.consentimiento || '').split('\n').forEach(linea => {
+    const l = linea.trim();
+    if (!l) { cerrar(); return; }
+    if (l.startsWith('## ')) { cerrar(); cont.appendChild(el('h4', { text: l.slice(3) })); return; }
+    parrafo.push(l);
+  });
+  cerrar();
+  $('notaVersion').textContent = 'Versión del consentimiento: ' + CFG.versionConsentimiento;
+  const revisar = () => { $('btnComenzar').disabled = !($('chkEdad').checked && $('chkAcepta').checked); };
+  $('chkEdad').onchange = revisar; $('chkAcepta').onchange = revisar;
+}
+
+async function comenzar(){
+  const b = $('btnComenzar'); b.disabled = true; b.textContent = 'Iniciando…';
+  // El registro del consentimiento no bloquea: si falla, se reintenta una vez en segundo plano.
+  const reg = { version: CFG.versionConsentimiento, acepta: true, mayorDeEdad: true };
+  api('consentimiento', reg).catch(() => setTimeout(() => api('consentimiento', reg).catch(()=>{}), 3000));
+  S = { etapa: 'encuesta', pagina: 0, perfil: {}, respuestas: {}, inicio: Date.now() };
+  guardarSesion();
+  mostrar('vEncuesta'); pintarPagina();
+}
+
+function noParticipar(){ borrarSesion(); $('tituloRetiro').textContent = 'Gracias por tu tiempo'; mostrar('vRetiro'); }
+
+/* =====================================================================
+   CUESTIONARIO
+   ===================================================================== */
+function construirPaginas(){
+  PAGINAS = [{ tipo: 'perfil' }];
+  const bloques = [];
+  CFG.items.forEach(it => {
+    let b = bloques.find(x => x.bloque === it.bloque);
+    if (!b) { b = { tipo: 'items', bloque: it.bloque, elementos: [] }; bloques.push(b); }
+    b.elementos.push(Object.assign({ clave: 'ITEM_' + it.id, num: it.id }, it));
+    CFG.atencion.filter(a => a.despuesDe === it.id).forEach(a => b.elementos.push({ clave: a.id, num: '·', texto: a.texto, tipo: a.tipo }));
+  });
+  PAGINAS = PAGINAS.concat(bloques);
+}
+
+function textoInstruccion(elementos){
+  const tipos = elementos.map(e => e.tipo);
+  if (tipos.every(t => t === 'LIKERT_ACUERDO')) return 'Indica qué tan de acuerdo estás con cada afirmación, pensando en cómo usas los sistemas de inteligencia artificial en tus estudios este semestre.';
+  if (tipos.every(t => t === 'LIKERT_FRECUENCIA')) return 'Indica con qué frecuencia te ocurre cada situación en tus estudios este semestre.';
+  return 'Selecciona la opción que mejor describe tu uso habitual de sistemas de inteligencia artificial en tus estudios este semestre. En las afirmaciones, indica tu grado de acuerdo o frecuencia según corresponda.';
+}
+
+function grupoOpciones(nombre, etiquetas, valorActual, alCambiar, conNumero, lista){
+  const cont = el('div', { class: 'opciones' + (lista ? ' lista' : ''), role: 'radiogroup' });
+  etiquetas.forEach((et, i) => {
+    const valor = typeof et === 'object' ? et.codigo : String(i + 1);
+    const texto = typeof et === 'object' ? et.nombre : et;
+    const idInput = nombre + '_' + i;
+    const inp = el('input', { type: 'radio', name: nombre, id: idInput, value: valor });
+    if (String(valorActual) === valor) inp.checked = true;
+    inp.addEventListener('change', () => alCambiar(valor));
+    const lab = el('label', { for: idInput });
+    if (conNumero) lab.appendChild(el('span', { class: 'v', text: String(i + 1) }));
+    lab.appendChild(el('span', { text: texto }));
+    cont.appendChild(el('div', { class: 'opcion' }, [inp, lab]));
+  });
+  return cont;
+}
+
+function pintarPagina(){
+  const pag = PAGINAS[S.pagina];
+  const cont = $('pagina'); cont.innerHTML = '';
+  $('avisoEnvio').innerHTML = '';
+  $('txtSeccion').textContent = 'Sección ' + (S.pagina + 1) + ' de ' + PAGINAS.length;
+
+  if (pag.tipo === 'perfil') {
+    cont.appendChild(el('div', { class: 'eyebrow', text: 'Datos de clasificación' }));
+    cont.appendChild(el('h2', { class: 'titulo', text: 'Algunas preguntas sobre ti' }));
+    cont.appendChild(el('p', { class: 'bajada', text: 'Estos datos se usan solo para describir la muestra en forma agregada.' }));
+
+    const set = (k) => (v) => { S.perfil[k] = v; guardarSesion(); actualizarAvance(); limpiarFalta('c_' + k); };
+    const campo = (k, titulo, nodo, ayuda) => {
+      const c = el('div', { class: 'campo', id: 'c_' + k }, [el('span', { class: 'etiqueta', text: titulo })]);
+      if (ayuda) c.appendChild(el('p', { class: 'ayuda', text: ayuda }));
+      c.appendChild(nodo); return c;
+    };
+    cont.appendChild(campo('institucion', '¿En qué institución estudias?', grupoOpciones('institucion', CFG.instituciones, S.perfil.institucion, set('institucion'), false, true)));
+    cont.appendChild(campo('carrera', '¿Qué carrera estudias?', grupoOpciones('carrera', CFG.carreras, S.perfil.carrera, set('carrera'), false, true)));
+
+    const edad = el('input', { type: 'number', class: 'numero', inputmode: 'numeric', min: '18', max: '99', placeholder: 'Años' });
+    if (S.perfil.edad) edad.value = S.perfil.edad;
+    edad.addEventListener('input', () => { S.perfil.edad = edad.value; guardarSesion(); limpiarFalta('c_edad'); actualizarAvance(); });
+    cont.appendChild(campo('edad', '¿Qué edad tienes?', edad));
+
+    cont.appendChild(campo('usaIA', 'Durante este semestre, ¿has usado algún sistema de inteligencia artificial para tus estudios?',
+      grupoOpciones('usaIA', [{ codigo: 'SI', nombre: 'Sí' }, { codigo: 'NO', nombre: 'No' }], S.perfil.usaIA, set('usaIA'), false, true),
+      'Por ejemplo, asistentes conversacionales, generadores de texto o herramientas de resumen.'));
+  } else {
+    cont.appendChild(el('div', { class: 'instruccion', text: textoInstruccion(pag.elementos) }));
+    pag.elementos.forEach(e => {
+      const p = el('div', { class: 'pregunta', id: 'q_' + e.clave }, [
+        el('div', { class: 'enunciado' }, [el('span', { class: 'num', text: String(e.num) }), el('span', { text: e.texto })])
+      ]);
+      p.appendChild(grupoOpciones(e.clave, CFG.escalas[e.tipo] || CFG.escalas.LIKERT_ACUERDO, S.respuestas[e.clave], v => {
+        S.respuestas[e.clave] = Number(v); guardarSesion(); actualizarAvance(); limpiarFalta('q_' + e.clave);
+      }, true));
+      cont.appendChild(p);
+    });
+  }
+
+  $('btnAnterior').classList.toggle('oculto', S.pagina === 0);
+  const ultima = S.pagina === PAGINAS.length - 1;
+  $('btnSiguiente').textContent = ultima ? 'Enviar respuestas' : 'Siguiente';
+  actualizarAvance();
+  window.scrollTo({ top: 0 });
+}
+
+function limpiarFalta(id){ const n = $(id); if (n) n.classList.remove('falta'); }
+
+function actualizarAvance(){
+  const total = CFG.items.length + CFG.atencion.length + 4;
+  let hechas = ['institucion','carrera','edad','usaIA'].filter(k => S.perfil[k]).length;
+  hechas += Object.keys(S.respuestas).length;
+  const pct = Math.min(100, Math.round(hechas / total * 100));
+  $('barraAvance').style.width = pct + '%';
+  $('txtAvance').textContent = pct + '%';
+}
+
+function faltantesPagina(){
+  const pag = PAGINAS[S.pagina];
+  if (pag.tipo === 'perfil') {
+    const f = [];
+    ['institucion','carrera','usaIA'].forEach(k => { if (!S.perfil[k]) f.push('c_' + k); });
+    const e = Number(S.perfil.edad);
+    if (!Number.isInteger(e) || e < 18 || e > 99) f.push('c_edad');
+    return f;
+  }
+  return pag.elementos.filter(e => !S.respuestas[e.clave]).map(e => 'q_' + e.clave);
+}
+
+function irPagina(delta){
+  if (delta < 0) { S.pagina = Math.max(0, S.pagina - 1); guardarSesion(); pintarPagina(); return; }
+
+  const faltan = faltantesPagina();
+  if (faltan.length) {
+    faltan.forEach(id => $(id).classList.add('falta'));
+    $(faltan[0]).scrollIntoView({ behavior: 'smooth', block: 'center' });
+    return;
+  }
+  // Quien no usa IA termina después de la clasificación
+  if (S.pagina === 0 && S.perfil.usaIA === 'NO') {
+    confirmar('Cuestionario completo',
+      'Como indicaste que no has usado sistemas de inteligencia artificial en tus estudios este semestre, el cuestionario termina aquí. ¿Enviamos tu respuesta? Si marcaste esa opción por error, vuelve y corrígela.',
+      'Enviar y terminar', enviar);
+    return;
+  }
+  if (S.pagina === PAGINAS.length - 1) { enviar(); return; }
+  S.pagina++; guardarSesion(); pintarPagina();
+}
+
+async function enviar(){
+  const b = $('btnSiguiente'); b.disabled = true; b.textContent = 'Enviando…';
+  $('avisoEnvio').innerHTML = '';
+  const payload = {
+    version: CFG.versionConsentimiento,
+    usaIA: S.perfil.usaIA,
+    institucion: S.perfil.institucion,
+    carrera: S.perfil.carrera,
+    edad: Number(S.perfil.edad),
+    dispositivo: matchMedia('(pointer:coarse)').matches ? 'movil' : 'escritorio',
+    duracion: Math.round((Date.now() - (S.inicio || Date.now())) / 1000),
+    respuestas: S.perfil.usaIA === 'SI' ? S.respuestas : {}
+  };
+  try {
+    const r = await api('enviar', { payload });
+    if (!r.ok) throw new Error(r.error || 'No se pudo guardar.');
+    borrarSesion();
+    if (S.perfil.usaIA === 'NO') $('txtGracias').textContent = 'Muchas gracias por tu tiempo. Tu respuesta se registró de forma anónima y ya puedes cerrar esta página.';
+    mostrar('vGracias');
+  } catch (e) {
+    $('avisoEnvio').appendChild(el('div', { class: 'aviso error', text: 'No fue posible enviar: ' + e.message + ' Tus respuestas siguen guardadas en esta pestaña; puedes intentarlo nuevamente.' }));
+    b.disabled = false; b.textContent = 'Reintentar el envío';
+  }
+}
+
+function pedirRetiro(){
+  confirmar('Retirarte del estudio', 'Se borrarán todas las respuestas que has marcado y no se guardará nada. ¿Confirmas que deseas retirarte?', 'Sí, retirarme', () => {
+    borrarSesion(); S = { etapa: 'consent' }; $('tituloRetiro').textContent = 'Te has retirado del estudio'; mostrar('vRetiro');
+  });
+}
+
+function confirmar(titulo, texto, textoSi, accionSi){
+  $('veloTitulo').textContent = titulo; $('veloTexto').textContent = texto; $('veloSi').textContent = textoSi;
+  $('velo').classList.remove('oculto');
+  $('veloNo').onclick = () => $('velo').classList.add('oculto');
+  $('veloSi').onclick = () => { $('velo').classList.add('oculto'); accionSi(); };
+}
+
+/* =====================================================================
+   PANEL DEL INVESTIGADOR
+   ===================================================================== */
+const CLAVE_TOKEN = 'eaceia_token';
+let TOKEN = null, ESTADO_ABIERTA = true;
+
+function iniciarAdmin(){
+  $('rotulo').textContent = 'Panel del investigador';
+  document.title = 'Panel del investigador';
+  try { TOKEN = sessionStorage.getItem(CLAVE_TOKEN); } catch(e){}
+  mostrar('vAdmin');
+  if (TOKEN) { $('adminLogin').classList.add('oculto'); $('adminPanel').classList.remove('oculto'); cargarEstadisticas(); }
+}
+
+async function ingresar(){
+  const b = $('btnIngresar'); b.disabled = true; b.textContent = 'Verificando…'; $('avisoLogin').innerHTML = '';
+  try {
+    const r = await api('login', { clave: $('clave').value });
+    if (!r.ok) throw new Error(r.error);
+    TOKEN = r.token; try { sessionStorage.setItem(CLAVE_TOKEN, TOKEN); } catch(e){}
+    $('clave').value = '';
+    $('adminLogin').classList.add('oculto'); $('adminPanel').classList.remove('oculto');
+    cargarEstadisticas();
+  } catch (e) {
+    $('avisoLogin').appendChild(el('div', { class: 'aviso error', text: e.message }));
+  }
+  b.disabled = false; b.textContent = 'Ingresar';
+}
+
+async function llamadaAdmin(accion, datos){
+  const r = await api(accion, Object.assign({ token: TOKEN }, datos || {}));
+  if (!r.ok && r.sesion) { salir(true); throw new Error(r.error); }
+  if (!r.ok) throw new Error(r.error);
+  return r;
+}
+
+async function salir(expirada){
+  if (TOKEN && !expirada) api('logout', { token: TOKEN }).catch(()=>{});
+  TOKEN = null; try { sessionStorage.removeItem(CLAVE_TOKEN); } catch(e){}
+  $('adminPanel').classList.add('oculto'); $('adminLogin').classList.remove('oculto');
+  if (expirada) $('avisoLogin').innerHTML = '<div class="aviso info">La sesión expiró. Ingresa nuevamente.</div>';
+}
+
+async function cargarEstadisticas(){
+  $('avisoPanel').innerHTML = '<div class="cargando" style="padding:14px 0"><div class="giro"></div>Calculando…</div>';
+  try {
+    const s = await llamadaAdmin('estadisticas');
+    $('avisoPanel').innerHTML = '';
+    pintarPanel(s);
+  } catch (e) {
+    $('avisoPanel').innerHTML = '';
+    $('avisoPanel').appendChild(el('div', { class: 'aviso error', text: e.message }));
+  }
+}
+
+function pintarEstado(){
+  $('lblEstado').className = 'estado ' + (ESTADO_ABIERTA ? 'abierta' : 'cerrada');
+  $('lblEstado').textContent = ESTADO_ABIERTA ? 'Abierta: recibiendo respuestas' : 'Cerrada: no recibe respuestas';
+  $('swEstado').classList.toggle('on', ESTADO_ABIERTA);
+}
+
+async function alternarEstado(){
+  const nuevo = !ESTADO_ABIERTA;
+  if (!nuevo && !window.confirm('¿Cerrar la toma de datos? Quienes estén respondiendo no podrán enviar.')) return;
+  $('swEstado').disabled = true;
+  try { const r = await llamadaAdmin('estado', { abierta: nuevo }); ESTADO_ABIERTA = r.abierta; pintarEstado(); }
+  catch (e) { $('avisoPanel').appendChild(el('div', { class: 'aviso error', text: e.message })); }
+  $('swEstado').disabled = false;
+}
+
+function etiquetaAlfa(a){
+  if (a === null || a === undefined) return el('span', { class: 'etq nd', text: 'n insuficiente' });
+  const c = a >= .8 ? 'bien' : a >= .7 ? 'medio' : 'mal';
+  return el('span', { class: 'etq ' + c, text: a.toFixed(3) });
+}
+
+function pintarPanel(s){
+  ESTADO_ABIERTA = s.abierta; pintarEstado();
+
+  const url = s.urlPublica || (location.origin + location.pathname);
+  $('urlPublica').value = url;
+  $('qr').innerHTML = '';
+  // Si la librería del QR no cargó (red que bloquea el CDN), el resto del panel sigue funcionando.
+  try {
+    new QRCode($('qr'), { text: url, width: 180, height: 180, colorDark: '#0F2D4A', colorLight: '#FFFFFF', correctLevel: QRCode.CorrectLevel.M });
+  } catch (e) {
+    $('qr').appendChild(el('p', { class: 'nota', text: 'No se pudo generar el QR en esta red. El enlace de arriba sigue siendo válido.' }));
+  }
+
+  $('kConsent').textContent = s.consentimientos;
+  $('kEnvios').textContent = s.envios;
+  $('kUsuarios').textContent = s.usuarios;
+  $('kNoUsuarios').textContent = s.noUsuarios;
+  $('kTasa').textContent = s.consentimientos ? Math.round(s.envios / s.consentimientos * 100) + '%' : '-';
+
+  // Avance por institución respecto de la meta
+  const bi = $('barrasInst'); bi.innerHTML = '';
+  const conMeta = [{ nombre: 'Total analizable', n: s.usuarios, meta: s.meta }]
+    .concat(s.porInstitucion.map(x => ({ nombre: x.nombre + ' (' + x.codigo + ')', n: x.n, meta: null })));
+  conMeta.forEach(x => {
+    const pct = x.meta ? Math.min(100, x.n / x.meta * 100) : (s.usuarios ? x.n / s.usuarios * 100 : 0);
+    const barra = el('div', { class: 'barra' }, [el('span')]);
+    barra.firstChild.style.width = pct + '%';
+    if (!x.meta) barra.firstChild.style.background = 'var(--campo)';
+    bi.appendChild(el('div', { class: 'item' }, [
+      el('div', { class: 'fila-flex' }, [el('span', { text: x.nombre }), el('span', { class: 'num', text: x.meta ? (x.n + ' de ' + x.meta) : (x.n + ' · ' + Math.round(pct) + '%') })]),
+      barra
+    ]));
+  });
+
+  // Calidad
+  const c = s.calidad, u = s.usuarios || 0;
+  const fmt = n => n + (u ? ' (' + Math.round(n / u * 100) + '%)' : '');
+  const tc = $('tblCalidad'); tc.innerHTML = '';
+  tc.appendChild(el('thead', null, [el('tr', null, [el('th', { text: 'Marca' }), el('th', { class: 'num', text: 'Casos' })])]));
+  const tb = el('tbody');
+  [
+    ['Fallan algún ítem de atención', c.conAtencion ? fmt(c.fallaAtencion) : 'sin datos'],
+    ['Respondieron en menos de ' + c.umbralRapidas + ' s', fmt(c.rapidas)],
+    ['Línea recta (' + c.umbralLineaRecta + ' o más iguales seguidas)', fmt(c.lineaRecta)]
+  ].forEach(f => tb.appendChild(el('tr', null, [el('td', { text: f[0] }), el('td', { class: 'num', text: f[1] })])));
+  tc.appendChild(tb);
+
+  // Ritmo diario
+  const rt = $('ritmo'); rt.innerHTML = '';
+  const max = Math.max(1, ...s.ritmo.map(x => x.n));
+  s.ritmo.forEach((x, i) => {
+    const b = el('span', { title: x.fecha + ': ' + x.n });
+    b.style.height = (x.n / max * 100) + '%';
+    if (i === s.ritmo.length - 1) b.classList.add('hoy');
+    rt.appendChild(b);
+  });
+  $('ritmoIni').textContent = s.ritmo[0].fecha.slice(5).split('-').reverse().join('/');
+
+  // Confiabilidad
+  const ta = $('tblAlfa'); ta.innerHTML = '';
+  ta.appendChild(el('thead', null, [el('tr', null, ['Código','Dimensión','Ítems','n','Alfa'].map((t, i) => el('th', { class: i >= 2 ? 'num' : '', text: t })))]));
+  const tba = el('tbody');
+  s.confiabilidad.forEach(d => tba.appendChild(el('tr', null, [
+    el('td', { text: d.codigo, style: 'font-family:var(--mono)' }), el('td', { text: d.nombre }),
+    el('td', { class: 'num', text: String(d.k) }), el('td', { class: 'num', text: String(d.n) }),
+    el('td', { class: 'num' }, [etiquetaAlfa(d.alfa)])
+  ])));
+  ta.appendChild(tba);
+
+  // Correlaciones con escala de color
+  const tr = $('tblCor'); tr.innerHTML = '';
+  const cods = s.dimensiones.map(d => d.codigo);
+  tr.appendChild(el('thead', null, [el('tr', null, [el('th', { text: '' })].concat(cods.map(cd => el('th', { text: cd }))))]));
+  const tbc = el('tbody');
+  s.correlaciones.forEach((fila, i) => {
+    const celdas = [el('th', { class: 'lat', text: cods[i], title: s.dimensiones[i].nombre })];
+    fila.forEach((v, j) => {
+      const td = el('td', { text: j > i ? '' : (v === null ? '·' : (i === j ? '1' : v.toFixed(2))) });
+      if (j < i && v !== null) {
+        const a = Math.min(1, Math.abs(v));
+        td.style.background = v >= 0 ? 'rgba(62,109,140,' + (a * .55) + ')' : 'rgba(233,106,43,' + (a * .55) + ')';
+        if (a > .5) td.style.color = '#fff';
+      }
+      celdas.push(td);
+    });
+    tbc.appendChild(el('tr', null, celdas));
+  });
+  tr.appendChild(tbc);
+}
+
+async function exportar(cual){
+  try {
+    const r = await llamadaAdmin('exportar');
+    const contenido = cual === 'datos' ? r.datos : r.diccionario;
+    const nombre = cual === 'datos' ? r.nombreDatos : r.nombreDiccionario;
+    const blob = new Blob(['\uFEFF' + contenido], { type: 'text/csv;charset=utf-8' });
+    const a = el('a', { href: URL.createObjectURL(blob), download: nombre });
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  } catch (e) {
+    $('avisoPanel').appendChild(el('div', { class: 'aviso error', text: e.message }));
+  }
+}
+
+function descargarQR(){
+  const lienzo = $('qr').querySelector('canvas');
+  const img = $('qr').querySelector('img');
+  const src = lienzo ? lienzo.toDataURL('image/png') : (img ? img.src : null);
+  if (!src) return;
+  const a = el('a', { href: src, download: 'EACE-IA_QR.png' });
+  document.body.appendChild(a); a.click(); a.remove();
+}
+</script>
+</body>
+</html>
