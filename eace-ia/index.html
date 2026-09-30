@@ -98,7 +98,12 @@
   .barra > span{display:block;height:100%;width:0;background:var(--naranja);transition:width .35s ease}
 
   /* Preguntas */
-  .instruccion{background:var(--campo-suave);border-left:3px solid var(--campo);border-radius:0 8px 8px 0;padding:10px 14px;font-size:14.5px;color:var(--azul);margin-bottom:18px}
+  .instruccion{position:relative;background:var(--campo-suave);border:1px solid #D3E1EB;border-left:5px solid var(--naranja);border-radius:4px 10px 10px 4px;padding:16px 18px 17px;margin:4px 0 22px;color:var(--azul)}
+  .instruccion .rot{display:flex;align-items:center;gap:8px;font:500 11.5px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--naranja);margin-bottom:9px}
+  .instruccion .rot .ico{width:17px;height:17px}
+  .instruccion p{font:500 17.5px/1.5 var(--texto);margin:0}
+  .instruccion strong{font-weight:700;background:linear-gradient(transparent 62%,rgba(233,106,43,.22) 62%)}
+  @media(min-width:640px){.instruccion{padding:18px 22px 19px}.instruccion p{font-size:19px}}
   .pregunta{padding:18px 0;border-top:1px solid var(--borde-suave)}
   .instruccion + .pregunta{border-top:none;padding-top:4px}
   .pregunta .enunciado{display:flex;gap:10px;font-weight:500;color:var(--azul);font-size:15.5px;line-height:1.5}
@@ -528,9 +533,16 @@ function construirPaginas(){
 
 function textoInstruccion(elementos){
   const tipos = elementos.map(e => e.tipo);
-  if (tipos.every(t => t === 'LIKERT_ACUERDO')) return 'Indica qué tan de acuerdo estás con cada afirmación, pensando en cómo usas los sistemas de inteligencia artificial en tus estudios este semestre.';
-  if (tipos.every(t => t === 'LIKERT_FRECUENCIA')) return 'Indica con qué frecuencia te ocurre cada situación en tus estudios este semestre.';
-  return 'Selecciona la opción que mejor describe tu uso habitual de sistemas de inteligencia artificial en tus estudios este semestre. En las afirmaciones, indica tu grado de acuerdo o frecuencia según corresponda.';
+  if (tipos.every(t => t === 'LIKERT_ACUERDO')) return 'Indica <strong>qué tan de acuerdo estás</strong> con cada afirmación, pensando en <strong>cómo usas la inteligencia artificial en tus estudios este semestre</strong>. No hay respuestas correctas ni incorrectas.';
+  if (tipos.every(t => t === 'LIKERT_FRECUENCIA')) return 'Indica <strong>con qué frecuencia</strong> te ocurre cada situación en tus estudios este semestre.';
+  return 'Marca la opción que mejor describe <strong>tu uso habitual</strong> de la inteligencia artificial en tus estudios este semestre. Fíjate en que <strong>cada pregunta tiene sus propias opciones</strong>.';
+}
+
+function bloqueInstruccion(elementos){
+  const d = el('div', { class: 'instruccion', role: 'note' });
+  // El texto sale de textoInstruccion, escrito en este mismo archivo; no contiene datos externos.
+  d.innerHTML = '<div class="rot"><svg class="ico" aria-hidden="true"><use href="#i-info"/></svg>Antes de responder</div><p>' + textoInstruccion(elementos) + '</p>';
+  return d;
 }
 
 function grupoOpciones(nombre, etiquetas, valorActual, alCambiar, conNumero, lista){
@@ -580,7 +592,7 @@ function pintarPagina(){
       'Por ejemplo, asistentes conversacionales, generadores de texto o herramientas de resumen.'));
   } else {
     cont.appendChild(eyebrow('seccion', 'Sección ' + String(S.pagina + 1).padStart(2, '0') + ' de ' + String(PAGINAS.length).padStart(2, '0')));
-    cont.appendChild(el('div', { class: 'instruccion', text: textoInstruccion(pag.elementos) }));
+    cont.appendChild(bloqueInstruccion(pag.elementos));
     pag.elementos.forEach(e => {
       const p = el('div', { class: 'pregunta', id: 'q_' + e.clave }, [
         el('div', { class: 'enunciado' }, [el('span', { class: 'num', text: String(e.num) }), el('span', { text: e.texto })])
