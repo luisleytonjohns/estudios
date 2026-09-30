@@ -192,6 +192,18 @@
   .login input{width:100%;padding:12px 14px;border:1.5px solid var(--borde);border-radius:8px;font:16px var(--texto);margin:14px 0 12px}
   .login input:focus{outline:none;border-color:var(--campo)}
 
+  .wr-opciones{display:grid;grid-template-columns:1fr;gap:8px;margin:14px 0}
+  @media(min-width:640px){.wr-opciones{grid-template-columns:1fr 1fr}}
+  .wr-opciones label{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border:1.5px solid var(--borde);border-radius:8px;font-size:14px;cursor:pointer;line-height:1.35}
+  .wr-opciones label small{display:block;color:var(--tenue);font-size:12.5px;margin-top:2px}
+  .wr-opciones input{width:18px;height:18px;accent-color:var(--azul);margin-top:1px;flex:0 0 auto}
+  .wr-opciones label:has(input:checked){border-color:var(--campo);background:var(--campo-suave)}
+  .wr-opciones label:has(input:disabled){opacity:.75;cursor:default}
+  .wr-estado{display:flex;align-items:center;gap:10px;font:500 13px var(--mono);color:var(--campo);margin-top:12px;min-height:22px}
+  .wr-estado.error{color:var(--rojo)} .wr-estado.ok{color:var(--verde)}
+  .wr-salida{margin-top:14px;background:#0F2D4A;color:#DCE6EF;border-radius:8px;padding:14px 16px;font:400 12.5px/1.5 var(--mono);white-space:pre;overflow:auto;max-height:560px;tab-size:2}
+  .wr-salida .sec{color:#F2A36F;font-weight:500}
+  .wr-salida .err{color:#FF9C85}
   footer{text-align:center;padding:18px 16px 24px;font-size:12.5px;color:var(--tenue)}
   footer a{color:var(--campo)}
 </style>
@@ -221,6 +233,7 @@
   <symbol id="i-ritmo" viewBox="0 0 24 24"><path d="M3 20h18M6 20v-6M10 20V9M14 20v-4M18 20V6"/></symbol>
   <symbol id="i-omega" viewBox="0 0 24 24"><path d="M5.5 19H10v-2.2a6.5 6.5 0 1 1 4 0V19h4.5"/></symbol>
   <symbol id="i-matriz" viewBox="0 0 24 24"><path d="M4 4h16v16H4zM4 9.3h16M4 14.7h16M9.3 4v16M14.7 4v16"/></symbol>
+  <symbol id="i-analisis" viewBox="0 0 24 24"><path d="M17 5H7l6 7-6 7h10"/><path d="M4 3v18M20 3v18" stroke-dasharray="1.5 2.5"/></symbol>
   <symbol id="i-exportar" viewBox="0 0 24 24"><path d="M12 4v10.5M8 10.5l4 4 4-4M5 15v4h14v-4"/></symbol>
 </svg>
 
@@ -385,6 +398,26 @@
         <p class="nota">Pearson sobre promedios de cada dimensión. D5 se puntúa en sentido de retención, por lo que se espera que correlacione en negativo con D1 a D4.</p>
       </div>
 
+
+      <div class="tarjeta" style="margin-top:16px">
+        <h3 class="sec-titulo"><span><svg class="ico" aria-hidden="true"><use href="#i-analisis"/></svg>Análisis psicométrico en el navegador</span></h3>
+        <p class="nota" style="margin-top:0">Corre R dentro de esta página (webR) con lavaan, psych y semTools, sobre los datos exportados en este momento. Sirve para revisar el piloto y la toma de datos sobre la marcha. El análisis oficial para publicar es el script <b>analisis_estadistico.R</b>, que usa partición de la muestra y bootstrap. La primera preparación descarga el motor y los paquetes (varias decenas de MB) y puede tardar uno o dos minutos.</p>
+        <button class="btn btn-azul" id="btnWR" onclick="prepararWebR()" style="margin-top:6px">Preparar el motor de análisis</button>
+        <div class="wr-estado" id="wrEstado"></div>
+        <div class="wr-opciones">
+          <label><input type="checkbox" checked disabled> <span>Muestra, exclusiones y puntajes<small>Siempre se ejecuta primero</small></span></label>
+          <label><input type="checkbox" id="wrAFE" checked> <span>Análisis factorial exploratorio<small>Policóricas, KMO, análisis paralelo, cargas. Mínimo 100 casos</small></span></label>
+          <label><input type="checkbox" id="wrAFC" checked> <span>Confirmatorio y confiabilidad<small>WLSMV, omega ordinal, AVE, HTMT, estructura de VD3. Mínimo 150 casos</small></span></label>
+          <label><input type="checkbox" id="wrHIP" checked> <span>Hipótesis H1, H2, H3 y H5<small>Moderación, D2 sobre D5, delegación y pensamiento crítico. Mínimo 80 casos</small></span></label>
+          <label><input type="checkbox" id="wrH4"> <span>H4 e invarianza de D2 entre instituciones<small>Mínimo 60 casos por institución</small></span></label>
+          <label><input type="checkbox" id="wrINV"> <span>Invarianza del modelo completo<small>Lento: puede tardar 20 minutos o más</small></span></label>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <button class="btn btn-primario" id="btnWRCorrer" onclick="ejecutarAnalisis()" disabled>Ejecutar análisis</button>
+          <button class="btn btn-secundario" id="btnWRInforme" onclick="descargarInforme()" disabled>Descargar informe (.txt)</button>
+        </div>
+        <pre class="wr-salida oculto" id="wrSalida"></pre>
+      </div>
       <div class="tarjeta" style="margin-top:16px">
         <h3 class="sec-titulo"><span><svg class="ico" aria-hidden="true"><use href="#i-exportar"/></svg>Exportación</span></h3>
         <div style="display:flex;gap:10px;flex-wrap:wrap">
@@ -411,6 +444,204 @@
   </div>
 </div>
 
+<script type="text/plain" id="r-preparar">
+# Preparación común: lectura, filtro, exclusiones, inversión y puntajes.
+# Espera: RUTA_DATOS, RUTA_DIC, DURACION_MINIMA, LONGSTRING_MAX
+crudos <- read.csv(RUTA_DATOS, fileEncoding = "UTF-8-BOM", stringsAsFactors = FALSE)
+dic    <- read.csv(RUTA_DIC,   fileEncoding = "UTF-8-BOM", stringsAsFactors = FALSE)
+dic    <- dic[grepl("^ITEM_", dic$VARIABLE_COLUMNA), ]
+dic$INVERSO <- toupper(as.character(dic$INVERSO)) == "TRUE"
+items_de <- function(codigo) dic$VARIABLE_COLUMNA[dic$CODIGO_DIM == codigo]
+DIM_EACE   <- sort(unique(dic$CODIGO_DIM[grepl("^D[0-9]", dic$CODIGO_DIM)]))
+ITEMS_EACE <- unlist(lapply(DIM_EACE, items_de))
+TODOS      <- dic$VARIABLE_COLUMNA
+
+cat("MUESTRA\n")
+cat("  Envíos totales:", nrow(crudos), "\n")
+cat("  Declaran no usar IA:", sum(crudos$USA_IA == "NO"), "\n")
+d <- crudos[crudos$USA_IA == "SI", ]
+faltan_col <- setdiff(TODOS, names(d))
+if (length(faltan_col)) stop("El archivo de datos no tiene las columnas: ", paste(faltan_col, collapse = ", "))
+d[TODOS] <- lapply(d[TODOS], as.numeric)
+d <- d[complete.cases(d[TODOS]), ]
+cat("  Usuarios de IA con respuestas completas:", nrow(d), "\n")
+
+d$LONGSTRING <- if (nrow(d)) apply(d[ITEMS_EACE], 1, function(f) max(rle(as.numeric(f))$lengths)) else numeric(0)
+aten <- all(c("ATN_1", "ATN_2") %in% names(d)) && any(!is.na(d$ATN_1))
+d$EXC_ATENCION <- if (aten) (as.numeric(d$ATN_1) != 2) | (as.numeric(d$ATN_2) != 4) else rep(FALSE, nrow(d))
+d$EXC_ATENCION[is.na(d$EXC_ATENCION)] <- TRUE
+d$EXC_RAPIDO <- as.numeric(d$DURACION_SEG) < DURACION_MINIMA
+d$EXC_LINEA  <- d$LONGSTRING >= LONGSTRING_MAX
+d$EXCLUIDO   <- d$EXC_ATENCION | d$EXC_RAPIDO | d$EXC_LINEA
+
+cat("\nEXCLUSIONES (criterios declarados)\n")
+cat("  Falla un ítem de atención:", sum(d$EXC_ATENCION), "\n")
+cat("  Duración menor a", DURACION_MINIMA, "s:", sum(d$EXC_RAPIDO), "\n")
+cat("  Línea recta de", LONGSTRING_MAX, "o más:", sum(d$EXC_LINEA), "\n")
+cat("  Excluidos por algún criterio:", sum(d$EXCLUIDO), "\n")
+d <- d[!d$EXCLUIDO, ]
+cat("  Muestra final:", nrow(d), "\n")
+if (nrow(d)) print(table(Institucion = d$INSTITUCION))
+
+inversos <- dic$VARIABLE_COLUMNA[dic$INVERSO]
+d[inversos] <- lapply(d[inversos], function(x) 6 - x)
+for (cod in unique(dic$CODIGO_DIM)) d[[paste0("P_", cod)]] <- rowMeans(d[items_de(cod)])
+if (nrow(d) > 1) d$P_VI <- rowMeans(scale(d[items_de("VI")]))
+d$P_DELEGACION <- rowMeans(cbind(d$P_D1, d$P_D2, d$P_D3, d$P_D4, 6 - d$P_D5))
+
+if (nrow(d) > 1) {
+  cat("\nPUNTAJES COMPUESTOS (promedio de ítems, inversos ya recodificados)\n")
+  compuestos <- d[grep("^P_", names(d))]
+  print(round(data.frame(n = colSums(!is.na(compuestos)), media = colMeans(compuestos, na.rm = TRUE),
+                         de = sapply(compuestos, sd, na.rm = TRUE)), 2))
+}
+
+exigir_n <- function(minimo, que) {
+  if (nrow(d) < minimo) stop(sprintf("Para %s se necesitan al menos %d casos válidos; hay %d.", que, minimo, nrow(d)), call. = FALSE)
+}
+</script>
+<script type="text/plain" id="r-afe">
+# Análisis factorial exploratorio de la escala (muestra completa, preliminar).
+exigir_n(max(100, 2 * length(ITEMS_EACE)), "el análisis factorial exploratorio")
+poli <- psych::polychoric(d[ITEMS_EACE], correct = 0)$rho
+kmo  <- psych::KMO(poli)
+bart <- psych::cortest.bartlett(poli, n = nrow(d))
+cat("ADECUACIÓN\n")
+cat("  KMO global:", round(kmo$MSA, 3), "\n")
+cat("  Bartlett: chi2 =", round(bart$chisq, 1), " gl =", bart$df, " p =", signif(bart$p.value, 3), "\n")
+cat("  Ítems con MSA bajo 0,60:", paste(names(kmo$MSAi)[kmo$MSAi < .60], collapse = ", "), "\n")
+
+pa <- psych::fa.parallel(poli, n.obs = nrow(d), fm = "minres", fa = "fa", plot = FALSE)
+cat("\nANÁLISIS PARALELO: factores sugeridos =", pa$nfact, "\n")
+
+afe <- psych::fa(poli, nfactors = length(DIM_EACE), n.obs = nrow(d), fm = "minres", rotate = "oblimin")
+cat("\nCARGAS (minres sobre policóricas, oblimin; se muestran sobre 0,30)\n")
+print(afe$loadings, cutoff = 0.30, sort = TRUE)
+cat("\nCORRELACIONES ENTRE FACTORES\n")
+print(round(afe$Phi, 2))
+</script>
+<script type="text/plain" id="r-afc">
+# Análisis factorial confirmatorio, confiabilidad y validez discriminante.
+exigir_n(max(150, 2 * length(ITEMS_EACE)), "el análisis factorial confirmatorio")
+modelo_medida <- paste(sprintf("%s =~ %s", DIM_EACE,
+  sapply(DIM_EACE, function(k) paste(items_de(k), collapse = " + "))), collapse = "\n")
+afc <- lavaan::cfa(modelo_medida, data = d, ordered = ITEMS_EACE, estimator = "WLSMV", std.lv = TRUE)
+aj <- lavaan::fitMeasures(afc, c("chisq.scaled", "df.scaled", "cfi.scaled", "tli.scaled",
+                                 "rmsea.scaled", "rmsea.ci.lower.scaled", "rmsea.ci.upper.scaled", "srmr"))
+cat("AJUSTE DEL MODELO DE CINCO DIMENSIONES (WLSMV)\n")
+print(round(aj, 3))
+cat("  Criterios declarados: CFI y TLI >= 0,90; RMSEA < 0,08\n")
+cg <- lavaan::standardizedSolution(afc); cg <- cg[cg$op == "=~", ]
+bajas <- cg[cg$est.std < .40, c("lhs", "rhs", "est.std")]
+cat("\nCargas estandarizadas bajo 0,40:", if (nrow(bajas)) "" else "ninguna", "\n")
+if (nrow(bajas)) print(bajas, row.names = FALSE, digits = 3)
+
+cat("\nCONFIABILIDAD POR DIMENSIÓN\n")
+om <- semTools::compRelSEM(afc); av <- semTools::AVE(afc)
+print(data.frame(omega_ordinal = round(om, 3), AVE = round(av[names(om)], 3)))
+
+cat("\nVALIDEZ DISCRIMINANTE (HTMT, conviene bajo 0,85)\n")
+print(round(semTools::htmt(modelo_medida, data = d, ordered = ITEMS_EACE), 3))
+
+it3 <- items_de("VD3")
+if (length(it3) >= 3) {
+  cat("\nDISPOSICIÓN AL PENSAMIENTO CRÍTICO (VD3): unifactorial frente a dos factores\n")
+  m1 <- paste("VD3 =~", paste(it3, collapse = " + "))
+  f1 <- lavaan::cfa(m1, data = d, ordered = it3, estimator = "WLSMV", std.lv = TRUE)
+  res <- rbind(unifactorial = lavaan::fitMeasures(f1, c("cfi.scaled", "tli.scaled", "rmsea.scaled", "srmr")))
+  if (length(it3) == 11) {
+    m2 <- paste0("AC =~ ", paste(it3[1:7], collapse = " + "), "\nER =~ ", paste(it3[8:11], collapse = " + "))
+    f2 <- lavaan::cfa(m2, data = d, ordered = it3, estimator = "WLSMV", std.lv = TRUE)
+    res <- rbind(res, dos_factores = lavaan::fitMeasures(f2, c("cfi.scaled", "tli.scaled", "rmsea.scaled", "srmr")))
+  }
+  print(round(res, 3))
+  cat("  Omega ordinal (unifactorial):", round(semTools::compRelSEM(f1), 3), "\n")
+  md <- paste(modelo_medida, m1, sep = "\n")
+  h <- semTools::htmt(md, data = d, ordered = c(ITEMS_EACE, it3))
+  cat("  HTMT de VD3 con cada dimensión de la escala:\n")
+  print(round(h["VD3", DIM_EACE], 3))
+}
+</script>
+<script type="text/plain" id="r-hipotesis">
+# Hipótesis H1, H2, H3 y H5 (preliminar: errores robustos en vez de bootstrap).
+exigir_n(80, "el contraste de hipótesis")
+d$c_VI   <- d$P_VI - mean(d$P_VI)
+d$c_DEL  <- d$P_DELEGACION - mean(d$P_DELEGACION)
+d$VIxDEL <- d$c_VI * d$c_DEL
+de_del <- sd(d$P_DELEGACION)
+
+cat("H1 y H2: MODERACIÓN DEL MODO DE ACOPLAMIENTO (índice global de delegación)\n")
+cat("  Se espera interacción negativa: a más delegación, menor beneficio del uso intensivo.\n")
+mod <- sprintf('
+  P_VD1 ~ a1*c_VI + a2*c_DEL + a3*VIxDEL
+  P_VD2 ~ b1*c_VI + b2*c_DEL + b3*VIxDEL
+  P_VD1 ~~ P_VD2
+  VD1_delegacion_baja := a1 - a3*%1$f
+  VD1_delegacion_alta := a1 + a3*%1$f
+  VD2_delegacion_baja := b1 - b3*%1$f
+  VD2_delegacion_alta := b1 + b3*%1$f', de_del)
+fm <- lavaan::sem(mod, data = d, estimator = "MLR")
+pe <- lavaan::parameterEstimates(fm, standardized = TRUE)
+pe <- pe[pe$label != "", c("label", "est", "ci.lower", "ci.upper", "pvalue", "std.all")]
+print(pe, row.names = FALSE, digits = 3)
+
+cat("\nH3: LA CONFIANZA EPISTÉMICA AUTOMÁTICA (D2) PREDICE MENOR RETENCIÓN (D5)\n")
+i2 <- items_de("D2"); i5 <- items_de("D5")
+m3 <- paste(paste("D2 =~", paste(i2, collapse = " + ")), paste("D5 =~", paste(i5, collapse = " + ")),
+            "D5 ~ h3*D2", sep = "\n")
+f3 <- lavaan::sem(m3, data = d, ordered = c(i2, i5), estimator = "WLSMV", std.lv = TRUE)
+s3 <- lavaan::standardizedSolution(f3)
+print(s3[s3$label == "h3", c("lhs", "op", "rhs", "est.std", "ci.lower", "ci.upper", "pvalue")], row.names = FALSE, digits = 3)
+cat("  Se espera un coeficiente negativo.\n")
+
+if (length(items_de("VD3"))) {
+  cat("\nH5: MÁS DELEGACIÓN SE ASOCIA A MENOR DISPOSICIÓN AL PENSAMIENTO CRÍTICO (VD3)\n")
+  m5 <- "P_VD3 ~ h5*c_DEL + c_VI"
+  f5 <- lavaan::sem(m5, data = d, estimator = "MLR")
+  p5 <- lavaan::parameterEstimates(f5, standardized = TRUE)
+  print(p5[p5$op == "~", c("lhs", "op", "rhs", "est", "ci.lower", "ci.upper", "pvalue", "std.all")], row.names = FALSE, digits = 3)
+  cat("  Se espera un coeficiente negativo para c_DEL, controlando la intensidad de uso.\n")
+}
+</script>
+<script type="text/plain" id="r-invarianza">
+# H4 con invarianza escalar de D2 (rápido). Si COMPLETA es TRUE, además la
+# invarianza del modelo de cinco dimensiones (lento).
+d_ab <- d[d$INSTITUCION %in% c("A", "B"), ]
+if (min(table(factor(d_ab$INSTITUCION, c("A", "B")))) < 60)
+  stop("Para comparar instituciones se necesitan al menos 60 casos válidos en cada una.", call. = FALSE)
+
+ajustar <- function(modelo, items, restricciones) {
+  s <- semTools::measEq.syntax(configural.model = modelo, data = d_ab, ordered = items,
+    parameterization = "delta", ID.fac = "std.lv", ID.cat = "Wu.Estabrook.2016",
+    group = "INSTITUCION", group.equal = restricciones)
+  lavaan::cfa(as.character(s), data = d_ab, group = "INSTITUCION", ordered = items,
+              estimator = "WLSMV", parameterization = "delta")
+}
+
+cat("H4: CONFIANZA EPISTÉMICA AUTOMÁTICA (D2) ENTRE INSTITUCIONES\n")
+i2 <- items_de("D2"); m2 <- paste("D2 =~", paste(i2, collapse = " + "))
+c2 <- ajustar(m2, i2, ""); e2 <- ajustar(m2, i2, c("thresholds", "loadings", "intercepts"))
+print(lavaan::lavTestLRT(c2, e2))
+g <- lavaan::lavInspect(e2, "group.label")
+pe <- as.data.frame(lavaan::parameterEstimates(e2))
+pe <- pe[pe$lhs == "D2" & pe$op == "~1", c("group", "est", "se", "pvalue")]
+pe$institucion <- g[pe$group]
+cat("  Grupo de referencia (media 0):", g[1], "\n")
+print(pe[, c("institucion", "est", "se", "pvalue")], row.names = FALSE, digits = 3)
+print(t.test(P_D2 ~ INSTITUCION, data = d_ab))
+
+if (isTRUE(COMPLETA)) {
+  cat("\nINVARIANZA DEL MODELO DE CINCO DIMENSIONES\n")
+  mm <- paste(sprintf("%s =~ %s", DIM_EACE,
+    sapply(DIM_EACE, function(k) paste(items_de(k), collapse = " + "))), collapse = "\n")
+  niveles <- list(configural = "", umbrales = "thresholds",
+                  cargas = c("thresholds", "loadings"), escalar = c("thresholds", "loadings", "intercepts"))
+  ajustes <- lapply(niveles, function(r) ajustar(mm, ITEMS_EACE, r))
+  print(do.call(lavaan::lavTestLRT, unname(ajustes)))
+  print(round(t(sapply(ajustes, lavaan::fitMeasures, c("cfi.scaled", "tli.scaled", "rmsea.scaled", "srmr"))), 3))
+  cat("  Criterio complementario: caída de CFI <= 0,010 entre niveles.\n")
+}
+</script>
 <script>
 /* =====================================================================
    ESTADO GENERAL
@@ -538,10 +769,15 @@ function textoInstruccion(elementos){
   return 'Marca la opción que mejor describe <strong>tu uso habitual</strong> de la inteligencia artificial en tus estudios este semestre. Fíjate en que <strong>cada pregunta tiene sus propias opciones</strong>.';
 }
 
-function bloqueInstruccion(elementos){
+function bloqueInstruccion(elementos, bloque){
   const d = el('div', { class: 'instruccion', role: 'note' });
   // El texto sale de textoInstruccion, escrito en este mismo archivo; no contiene datos externos.
-  d.innerHTML = '<div class="rot"><svg class="ico" aria-hidden="true"><use href="#i-info"/></svg>Antes de responder</div><p>' + textoInstruccion(elementos) + '</p>';
+  const propia = CFG.instruccionesBloque && CFG.instruccionesBloque[bloque];
+  // La instrucción propia viene de la planilla: se escapa y solo se permite **destacado**.
+  const texto = propia
+    ? propia.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    : textoInstruccion(elementos);
+  d.innerHTML = '<div class="rot"><svg class="ico" aria-hidden="true"><use href="#i-info"/></svg>Antes de responder</div><p>' + texto + '</p>';
   return d;
 }
 
@@ -592,7 +828,7 @@ function pintarPagina(){
       'Por ejemplo, asistentes conversacionales, generadores de texto o herramientas de resumen.'));
   } else {
     cont.appendChild(eyebrow('seccion', 'Sección ' + String(S.pagina + 1).padStart(2, '0') + ' de ' + String(PAGINAS.length).padStart(2, '0')));
-    cont.appendChild(bloqueInstruccion(pag.elementos));
+    cont.appendChild(bloqueInstruccion(pag.elementos, pag.bloque));
     pag.elementos.forEach(e => {
       const p = el('div', { class: 'pregunta', id: 'q_' + e.clave }, [
         el('div', { class: 'enunciado' }, [el('span', { class: 'num', text: String(e.num) }), el('span', { text: e.texto })])
@@ -776,6 +1012,7 @@ function etiquetaAlfa(a){
 }
 
 function pintarPanel(s){
+  ULT_STATS = s;
   ESTADO_ABIERTA = s.abierta; pintarEstado();
 
   const url = s.urlPublica || (location.origin + location.pathname);
@@ -877,6 +1114,128 @@ async function exportar(cual){
   } catch (e) {
     $('avisoPanel').appendChild(el('div', { class: 'aviso error', text: e.message }));
   }
+}
+
+
+/* =====================================================================
+   ANÁLISIS CON webR (R en el navegador)
+   ===================================================================== */
+const WEBR_URL = 'https://webr.r-wasm.org/latest/webr.mjs';
+const WEBR_REPOS = ['https://repo.r-wasm.org', 'https://cran.r-universe.dev'];
+const WEBR_PAQUETES = ['lavaan', 'psych', 'GPArotation', 'semTools'];
+let WR = null, WR_PAQUETES = false, WR_OCUPADO = false, ULT_STATS = null, INFORME = '';
+
+function wrEstado(texto, clase, girando){
+  const e = $('wrEstado'); e.className = 'wr-estado' + (clase ? ' ' + clase : ''); e.innerHTML = '';
+  if (girando) e.appendChild(el('div', { class: 'giro' }));
+  e.appendChild(document.createTextNode(texto));
+}
+
+function wrEscribir(texto, clase){
+  const pre = $('wrSalida'); pre.classList.remove('oculto');
+  const span = document.createElement('span');
+  if (clase) span.className = clase;
+  span.textContent = texto;
+  pre.appendChild(span);
+  pre.scrollTop = pre.scrollHeight;
+  INFORME += texto;
+}
+
+async function correrR(codigo){
+  const sh = await new WR.Shelter();
+  try {
+    const r = await sh.captureR(codigo, { withAutoprint: true, captureStreams: true, captureConditions: false });
+    return r.output.map(o => ({ tipo: o.type, texto: String(o.data) }));
+  } finally {
+    sh.purge();
+  }
+}
+
+async function prepararWebR(){
+  if (WR_OCUPADO) return;
+  WR_OCUPADO = true; $('btnWR').disabled = true;
+  try {
+    if (!WR) {
+      wrEstado('Descargando el motor de R…', '', true);
+      const mod = await import(WEBR_URL);
+      WR = new mod.WebR({ channelType: mod.ChannelType.PostMessage });
+      await WR.init();
+    }
+    wrEstado('Instalando lavaan, psych, GPArotation y semTools…', '', true);
+    const repos = WEBR_REPOS.map(r => '"' + r + '"').join(', ');
+    const pkgs = WEBR_PAQUETES.map(p => '"' + p + '"').join(', ');
+    await correrR('webr::install(c(' + pkgs + '), repos = c(' + repos + '), quiet = TRUE)');
+    const ok = await correrR('cat(all(sapply(c(' + pkgs + '), requireNamespace, quietly = TRUE)))');
+    if (!ok.some(o => o.texto.indexOf('TRUE') !== -1)) throw new Error('No se pudieron cargar todos los paquetes estadísticos.');
+    WR_PAQUETES = true;
+    wrEstado('Motor listo', 'ok');
+    $('btnWR').textContent = 'Motor listo';
+    $('btnWRCorrer').disabled = false;
+  } catch (e) {
+    wrEstado('No se pudo preparar el motor: ' + (e.message || e) + ' Revisa la conexión e intenta nuevamente.', 'error');
+    $('btnWR').disabled = false;
+  }
+  WR_OCUPADO = false;
+}
+
+async function ejecutarAnalisis(){
+  if (WR_OCUPADO || !WR) return;
+  WR_OCUPADO = true; $('btnWRCorrer').disabled = true; $('btnWRInforme').disabled = true;
+  $('wrSalida').innerHTML = ''; INFORME = '';
+  const inicio = Date.now();
+  const reloj = setInterval(() => wrEstado('Analizando… ' + Math.round((Date.now() - inicio) / 1000) + ' s', '', true), 1000);
+  try {
+    wrEstado('Obteniendo los datos…', '', true);
+    const ex = await llamadaAdmin('exportar');
+    const enc = new TextEncoder();
+    WR.FS.writeFile('/home/web_user/datos.csv', enc.encode(ex.datos));
+    WR.FS.writeFile('/home/web_user/dic.csv', enc.encode(ex.diccionario));
+    const c = (ULT_STATS && ULT_STATS.calidad) || {};
+    const bloques = [['preparar', 'MUESTRA, EXCLUSIONES Y PUNTAJES']];
+    if ($('wrAFE').checked) bloques.push(['afe', 'ANÁLISIS FACTORIAL EXPLORATORIO']);
+    if ($('wrAFC').checked) bloques.push(['afc', 'ANÁLISIS FACTORIAL CONFIRMATORIO Y CONFIABILIDAD']);
+    if ($('wrHIP').checked) bloques.push(['hipotesis', 'HIPÓTESIS']);
+    if ($('wrH4').checked || $('wrINV').checked) bloques.push(['invarianza', 'INSTITUCIONES E INVARIANZA']);
+    const cabecera = 'EACE-IA · Análisis preliminar en el navegador\nDatos: ' + ex.nombreDatos + '\nGenerado: ' + new Date().toLocaleString('es-CL') + '\n';
+    wrEscribir(cabecera);
+    const parametros = 'RUTA_DATOS <- "/home/web_user/datos.csv"; RUTA_DIC <- "/home/web_user/dic.csv"; ' +
+      'DURACION_MINIMA <- ' + (Number(c.umbralRapidas) || 240) + '; LONGSTRING_MAX <- ' + (Number(c.umbralLineaRecta) || 15) + '; ' +
+      'COMPLETA <- ' + ($('wrINV').checked ? 'TRUE' : 'FALSE') + '\n';
+    let prepOk = true;
+    for (const [id, titulo] of bloques) {
+      if (!prepOk) break;
+      wrEscribir('\n\n══ ' + titulo + ' ══\n\n', 'sec');
+      const codigo = $('r-' + id).textContent;
+      // Cada bloque corre protegido: un error se informa y no rompe la página.
+      // Los avisos técnicos de lavaan se cuentan en vez de imprimirse uno por uno.
+      const envuelto = (id === 'preparar' ? parametros : '') +
+        '.avisos <- 0L\n.ok <- tryCatch({ withCallingHandlers({\n' + codigo +
+        '\n}, warning = function(w) { .avisos <<- .avisos + 1L; invokeRestart("muffleWarning") }); TRUE },\n' +
+        '  error = function(e) { cat("\\nNO SE PUDO COMPLETAR ESTE BLOQUE: ", conditionMessage(e), "\\n", sep = ""); FALSE })\n' +
+        'if (.avisos > 0) cat("\\n(", .avisos, " avisos técnicos omitidos; son habituales con WLSMV)\\n", sep = "")\n' +
+        'cat("\\n.OK=", .ok, "\\n", sep = "")\n';
+      const salida = await correrR(envuelto);
+      let okBloque = false;
+      salida.forEach(o => {
+        if (o.texto.indexOf('.OK=') === 0) { okBloque = o.texto.indexOf('TRUE') !== -1; return; }
+        wrEscribir(o.texto + '\n', (o.tipo === 'stderr' || o.texto.indexOf('NO SE PUDO COMPLETAR') !== -1) ? 'err' : '');
+      });
+      if (id === 'preparar' && !okBloque) prepOk = false;
+    }
+    wrEstado('Análisis terminado en ' + Math.round((Date.now() - inicio) / 1000) + ' s', 'ok');
+    $('btnWRInforme').disabled = false;
+  } catch (e) {
+    wrEstado('Error: ' + (e.message || e), 'error');
+  }
+  clearInterval(reloj);
+  WR_OCUPADO = false; $('btnWRCorrer').disabled = !WR_PAQUETES;
+}
+
+function descargarInforme(){
+  const blob = new Blob(['﻿' + INFORME], { type: 'text/plain;charset=utf-8' });
+  const a = el('a', { href: URL.createObjectURL(blob), download: 'EACE_IA_Analisis_preliminar.txt' });
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
 }
 
 function descargarQR(){
