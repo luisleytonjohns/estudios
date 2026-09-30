@@ -1175,10 +1175,22 @@ async function prepararWebR(){
       const out = await correrR('if (!requireNamespace("' + pkg + '", quietly = TRUE)) webr::install("' + pkg + '", repos = ' + repos + ', quiet = FALSE) else cat("  ya estaba instalado\\n")');
       out.forEach(o => wrEscribir('  ' + o.texto + '\n', o.tipo === 'stderr' ? 'err' : ''));
     }
-    wrEscribir('\nVERIFICACIÓN\n', 'sec');
-    const res = await correrR('for (p in c(' + WEBR_PAQUETES.map(p => '"' + p + '"').join(', ') + ')) cat(p, if (requireNamespace(p, quietly = TRUE)) "disponible" else "NO DISPONIBLE", "\\n")');
+    wrEscribir('\nVERIFICACIÓN (se carga cada paquete y sus dependencias compiladas)\n', 'sec');
+    // Se intenta cargar cada paquete y, si falla, se muestra el mensaje real de R.
+    const revisar = ['MASS', 'lattice', 'nlme', 'mnormt', 'pbivnorm', 'numDeriv', 'quadprog'].concat(WEBR_PAQUETES);
+    const codigoVer = 'for (p in c(' + revisar.map(p => '"' + p + '"').join(', ') + ')) { ' +
+      'm <- tryCatch({ suppressPackageStartupMessages(loadNamespace(p)); "OK" }, error = function(e) conditionMessage(e)); ' +
+      'v <- tryCatch(as.character(packageVersion(p)), error = function(e) "?"); ' +
+      'cat(sprintf("%-11s %-9s %s\\n", p, v, if (identical(m, "OK")) "disponible" else paste("NO DISPONIBLE:", gsub("\\n", " ", m)))) }\n' +
+      'cat("Bibliotecas:", paste(.libPaths(), collapse = " | "), "\\n")';
+    const res = await correrR(codigoVer);
     const faltan = [];
-    res.forEach(o => { wrEscribir('  ' + o.texto + '\n', o.texto.indexOf('NO DISPONIBLE') !== -1 ? 'err' : ''); if (o.texto.indexOf('NO DISPONIBLE') !== -1) faltan.push(o.texto.split(' ')[0]); });
+    res.forEach(o => {
+      const malo = o.texto.indexOf('NO DISPONIBLE') !== -1;
+      wrEscribir('  ' + o.texto + '\n', malo ? 'err' : '');
+      const nombre = o.texto.trim().split(/\s+/)[0];
+      if (malo && WEBR_PAQUETES.indexOf(nombre) !== -1) faltan.push(nombre);
+    });
     if (faltan.length) throw new Error('No quedaron disponibles: ' + faltan.join(', ') + '. El registro de abajo muestra el motivo.');
     WR_PAQUETES = true;
     wrEstado('Motor listo en ' + Math.round((Date.now() - inicio) / 1000) + ' s', 'ok');
