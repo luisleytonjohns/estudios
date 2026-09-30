@@ -1190,7 +1190,10 @@ async function prepararWebR(){
     wrEscribir('  Repositorios: ' + WEBR_REPOS.join(', ') + '\n\n');
     const repos = 'c(' + WEBR_REPOS.map(r => '"' + r + '"').join(', ') + ')';
     // psych calcula en paralelo creando procesos, cosa que el navegador no permite: un solo núcleo.
-    await correrR('options(mc.cores = 1)');
+    // El navegador no informa cuántos núcleos tiene (detectCores() da NA) y lavaan 0.6.21
+    // valida ese número: se declara un núcleo antes de cargar lavaan.
+    await correrR('options(mc.cores = 1, Ncpus = 1)\ne <- asNamespace("parallel")\n' +
+      'if (is.na(parallel::detectCores())) { unlockBinding("detectCores", e); assign("detectCores", function(all.tests = FALSE, logical = TRUE) 1L, envir = e); lockBinding("detectCores", e) }');
     // quadprog no está compilado para esta versión de R y lavaan lo exige para cargar.
     // Solo se usa en modelos con restricciones de desigualdad, que este análisis no tiene,
     // así que se instala un sustituto mínimo sin compilar.
