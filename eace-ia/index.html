@@ -129,6 +129,12 @@
   .campo.falta > .etiqueta::after{content:" · falta responder";color:var(--rojo);font-weight:500;font-size:13px}
   .opciones.lista{grid-template-columns:1fr}
   @media(min-width:640px){.opciones.lista{grid-template-columns:repeat(auto-fit,minmax(180px,1fr))}.opciones.lista .opcion label{flex-direction:row;text-align:left;min-height:48px;font-size:14px;justify-content:flex-start}}
+  .campo.autoriza{margin-top:18px}
+  .campo.autoriza.falta .etiqueta{color:var(--rojo)}
+  .comprobante{margin:22px auto 0;max-width:420px;display:grid;gap:10px;justify-items:center;padding:18px;border:1.5px dashed var(--campo);border-radius:10px;background:var(--campo-suave)}
+  .comprobante span{font-size:13px;color:var(--tenue);text-transform:uppercase;letter-spacing:.08em}
+  .comprobante b{font:600 28px/1 var(--mono);color:var(--azul);letter-spacing:.06em;user-select:all}
+  .otra-texto{margin-top:8px;width:100%;max-width:420px;padding:10px 12px;border:1.5px solid var(--borde);border-radius:8px;font:15px var(--texto)}
   input.numero{width:120px;padding:11px 12px;border:1.5px solid var(--borde);border-radius:8px;font:500 16px var(--texto);color:var(--azul)}
   input.numero:focus{outline:none;border-color:var(--campo)}
 
@@ -241,7 +247,7 @@
   <div class="marco">
     <div class="iso" aria-hidden="true"><svg viewBox="0 0 64 64"><use href="#i-marca"/></svg></div>
     <div>
-      <div class="rotulo" id="rotulo">Estudio de investigación académica</div>
+      <div class="rotulo" id="rotulo">Diagnóstico del curso · Estudio de investigación</div>
       <h1 id="tituloPublico">Uso de inteligencia artificial en el trabajo académico</h1>
     </div>
   </div>
@@ -275,12 +281,19 @@
     <div class="tarjeta">
       <div class="eyebrow"><svg class="ico" aria-hidden="true"><use href="#i-doc"/></svg>Consentimiento informado</div>
       <h2 class="titulo">Antes de comenzar</h2>
-      <p class="bajada">Lee la siguiente información. Solo si estás de acuerdo podrás acceder al cuestionario.</p>
+      <p class="bajada">Lee la siguiente información antes de comenzar. Al final indicas si autorizas el uso de tus respuestas con fines de investigación.</p>
       <div class="consentimiento" id="txtConsent"></div>
       <label class="casilla"><input type="checkbox" id="chkEdad"> Declaro tener 18 años o más.</label>
-      <label class="casilla"><input type="checkbox" id="chkAcepta"> He leído la información anterior y acepto participar voluntariamente en este estudio.</label>
+      <label class="casilla"><input type="checkbox" id="chkAcepta"> He leído la información anterior.</label>
+      <div class="campo autoriza" id="c_autoriza">
+        <span class="etiqueta">¿Autorizas que tus respuestas se usen, de forma anónima, con fines de investigación?</span>
+        <p class="ayuda">Debes elegir una opción. Cualquiera de las dos es válida y no tiene efecto en tus evaluaciones.</p>
+        <div class="opciones lista" role="radiogroup">
+          <div class="opcion"><input type="radio" name="autoriza" id="aut_si" value="SI"><label for="aut_si"><span>Sí, autorizo el uso en investigación</span></label></div>
+          <div class="opcion"><input type="radio" name="autoriza" id="aut_no" value="NO"><label for="aut_no"><span>No, solo para el diagnóstico del curso</span></label></div>
+        </div>
+      </div>
       <div class="acciones">
-        <button class="btn-texto" onclick="noParticipar()">No deseo participar</button>
         <button class="btn btn-primario" id="btnComenzar" disabled onclick="comenzar()">Comenzar el cuestionario</button>
       </div>
       <p class="nota" id="notaVersion"></p>
@@ -295,7 +308,6 @@
     </div>
     <div class="tarjeta" id="pagina"></div>
     <div class="acciones">
-      <button class="btn-texto" onclick="pedirRetiro()">Retirarme del estudio</button>
       <div style="display:flex;gap:10px">
         <button class="btn btn-secundario" id="btnAnterior" onclick="irPagina(-1)">Anterior</button>
         <button class="btn btn-primario" id="btnSiguiente" onclick="irPagina(1)" style="flex:1">Siguiente</button>
@@ -309,7 +321,13 @@
     <div class="tarjeta centro">
       <div class="sello ok"><svg class="ico" aria-hidden="true"><use href="#i-ok"/></svg></div>
       <h2 class="titulo">Respuestas registradas</h2>
-      <p class="bajada" id="txtGracias">Muchas gracias por tu tiempo. Tus respuestas se guardaron de forma anónima y ya puedes cerrar esta página.</p>
+      <p class="bajada" id="txtGracias">Muchas gracias por tu tiempo. Tus respuestas se guardaron de forma anónima.</p>
+      <div class="comprobante oculto" id="cajaComprobante">
+        <span>Tu código de término</span>
+        <b id="txtComprobante"></b>
+        <button class="btn btn-secundario" type="button" onclick="copiarComprobante()" id="btnCopiar">Copiar código</button>
+        <p class="nota">Pégalo en la actividad de diagnóstico del curso para darla por cumplida. Este código no está vinculado a tus respuestas.</p>
+      </div>
     </div>
   </section>
 
@@ -364,7 +382,8 @@
       <div class="tarjeta" style="margin-top:16px">
         <h3 class="sec-titulo"><span><svg class="ico" aria-hidden="true"><use href="#i-muestra"/></svg>Muestra</span></h3>
         <div class="kpis">
-          <div class="kpi"><div class="n" id="kConsent">0</div><div class="t">Consentimientos aceptados</div></div>
+          <div class="kpi"><div class="n" id="kConsent">0</div><div class="t">Consentimientos leídos</div></div>
+          <div class="kpi"><div class="n" id="kAutorizan">0</div><div class="t">Autorizan uso en investigación</div></div>
           <div class="kpi"><div class="n" id="kEnvios">0</div><div class="t">Envíos completos</div></div>
           <div class="kpi"><div class="n" id="kUsuarios">0</div><div class="t">Usan IA (muestra analizable)</div></div>
           <div class="kpi"><div class="n" id="kNoUsuarios">0</div><div class="t">No usan IA</div></div>
@@ -430,7 +449,7 @@
   </section>
 </main>
 
-<footer id="pie">Participación anónima y voluntaria</footer>
+<footer id="pie">Respuestas anónimas</footer>
 
 <!-- Confirmación -->
 <div class="velo oculto" id="velo">
@@ -478,6 +497,10 @@ TODOS      <- dic$VARIABLE_COLUMNA
 cat("MUESTRA\n")
 cat("  Envíos totales:", nrow(crudos), "\n")
 cat("  Declaran no usar IA:", sum(crudos$USA_IA == "NO"), "\n")
+if ("AUTORIZA_INVESTIGACION" %in% names(crudos)) {
+  cat("  No autorizan uso en investigación (se excluyen):", sum(crudos$AUTORIZA_INVESTIGACION == "NO", na.rm = TRUE), "\n")
+  crudos <- crudos[is.na(crudos$AUTORIZA_INVESTIGACION) | crudos$AUTORIZA_INVESTIGACION != "NO", ]
+}
 d <- crudos[crudos$USA_IA == "SI", ]
 faltan_col <- setdiff(TODOS, names(d))
 if (length(faltan_col)) stop("El archivo de datos no tiene las columnas: ", paste(faltan_col, collapse = ", "))
@@ -665,10 +688,10 @@ if (isTRUE(COMPLETA)) {
 /* =====================================================================
    ESTADO GENERAL
    ===================================================================== */
-const CLAVE_SESION = 'eaceia_sesion_v2';
+const CLAVE_SESION = 'eaceia_sesion_v3';
 let CFG = null;
 let PAGINAS = [];
-let S = { etapa: 'consent', pagina: 0, perfil: {}, respuestas: {}, inicio: null };
+let S = { etapa: 'consent', pagina: 0, perfil: {}, respuestas: {}, uso: {}, autoriza: null, inicio: null };
 
 const $ = id => document.getElementById(id);
 const VISTAS = ['vCarga','vError','vCerrado','vConsent','vEncuesta','vGracias','vRetiro','vAdmin'];
@@ -721,7 +744,7 @@ async function iniciar(){
   if (CFG.tituloPublico) { $('tituloPublico').textContent = CFG.tituloPublico; document.title = CFG.tituloPublico; }
   if (CFG.correoContacto) {
     $('pie').innerHTML = '';
-    $('pie').append('Participación anónima y voluntaria · Consultas: ');
+    $('pie').append('Respuestas anónimas · Consultas: ');
     $('pie').appendChild(el('a', { href: 'mailto:' + CFG.correoContacto, text: CFG.correoContacto }));
   }
   construirPaginas();
@@ -750,16 +773,20 @@ function pintarConsentimiento(){
   });
   cerrar();
   $('notaVersion').textContent = 'Versión del consentimiento: ' + CFG.versionConsentimiento;
-  const revisar = () => { $('btnComenzar').disabled = !($('chkEdad').checked && $('chkAcepta').checked); };
+  const autoriza = () => { const r = document.querySelector('input[name=autoriza]:checked'); return r ? r.value : null; };
+  const revisar = () => { $('btnComenzar').disabled = !($('chkEdad').checked && $('chkAcepta').checked && autoriza()); };
   $('chkEdad').onchange = revisar; $('chkAcepta').onchange = revisar;
+  document.querySelectorAll('input[name=autoriza]').forEach(r => { r.onchange = revisar; });
 }
 
 async function comenzar(){
   const b = $('btnComenzar'); b.disabled = true; b.textContent = 'Iniciando…';
   // El registro del consentimiento no bloquea: si falla, se reintenta una vez en segundo plano.
-  const reg = { version: CFG.versionConsentimiento, acepta: true, mayorDeEdad: true };
+  const aut = (document.querySelector('input[name=autoriza]:checked') || {}).value;
+  if (aut !== 'SI' && aut !== 'NO') { b.disabled = false; b.textContent = 'Comenzar el cuestionario'; $('c_autoriza').classList.add('falta'); return; }
+  const reg = { version: CFG.versionConsentimiento, acepta: true, mayorDeEdad: true, autoriza: aut };
   api('consentimiento', reg).catch(() => setTimeout(() => api('consentimiento', reg).catch(()=>{}), 3000));
-  S = { etapa: 'encuesta', pagina: 0, perfil: {}, respuestas: {}, inicio: Date.now() };
+  S = { etapa: 'encuesta', pagina: 0, perfil: {}, respuestas: {}, uso: {}, autoriza: aut, inicio: Date.now() };
   guardarSesion();
   mostrar('vEncuesta'); pintarPagina();
 }
@@ -771,6 +798,7 @@ function noParticipar(){ borrarSesion(); $('tituloRetiro').textContent = 'Gracia
    ===================================================================== */
 function construirPaginas(){
   PAGINAS = [{ tipo: 'perfil' }];
+  if ((CFG.preguntasUso || []).length) PAGINAS.push({ tipo: 'uso' });
   const bloques = [];
   CFG.items.forEach(it => {
     let b = bloques.find(x => x.bloque === it.bloque);
@@ -845,6 +873,52 @@ function pintarPagina(){
     cont.appendChild(campo('usaIA', 'Durante este semestre, ¿has usado algún sistema de inteligencia artificial para tus estudios?',
       grupoOpciones('usaIA', [{ codigo: 'SI', nombre: 'Sí' }, { codigo: 'NO', nombre: 'No' }], S.perfil.usaIA, set('usaIA'), false, true),
       'Por ejemplo, asistentes conversacionales, generadores de texto o herramientas de resumen.'));
+  } else if (pag.tipo === 'uso') {
+    cont.appendChild(eyebrow('perfil', 'Tu uso de la inteligencia artificial'));
+    cont.appendChild(el('h2', { class: 'titulo', text: 'Las herramientas que usas' }));
+    cont.appendChild(el('p', { class: 'bajada', text: 'Piensa en tus estudios, tu trabajo y tu vida personal.' }));
+    if (!S.uso) S.uso = {};
+    CFG.preguntasUso.forEach(q => {
+      const c = el('div', { class: 'campo', id: 'c_' + q.id }, [el('span', { class: 'etiqueta', text: q.texto })]);
+      if (q.ayuda) c.appendChild(el('p', { class: 'ayuda', text: q.ayuda }));
+      const conOtra = q.opciones.some(o => o.codigo === 'OTRA');
+      const otra = conOtra ? el('input', { type: 'text', class: 'otra-texto', maxlength: '80', placeholder: '¿Cuál?' }) : null;
+      const verOtra = () => {
+        if (!otra) return;
+        const v = S.uso[q.id];
+        const marcada = Array.isArray(v) ? v.indexOf('OTRA') !== -1 : v === 'OTRA';
+        otra.classList.toggle('oculto', !marcada);
+      };
+      if (q.tipo === 'multiple') {
+        const caja = el('div', { class: 'opciones lista' });
+        const actual = Array.isArray(S.uso[q.id]) ? S.uso[q.id] : [];
+        q.opciones.forEach((o, i) => {
+          const idI = q.id + '_' + i;
+          const inp = el('input', { type: 'checkbox', id: idI, value: o.codigo });
+          if (actual.indexOf(o.codigo) !== -1) inp.checked = true;
+          inp.addEventListener('change', () => {
+            let v = Array.isArray(S.uso[q.id]) ? S.uso[q.id].slice() : [];
+            if (inp.checked) {
+              if (q.exclusiva && o.codigo === q.exclusiva) v = [o.codigo];
+              else { v = v.filter(x => x !== q.exclusiva); v.push(o.codigo); }
+            } else v = v.filter(x => x !== o.codigo);
+            S.uso[q.id] = v;
+            caja.querySelectorAll('input').forEach(x => { x.checked = v.indexOf(x.value) !== -1; });
+            guardarSesion(); actualizarAvance(); limpiarFalta('c_' + q.id); verOtra();
+          });
+          caja.appendChild(el('div', { class: 'opcion' }, [inp, el('label', { for: idI }, [el('span', { text: o.nombre })])]));
+        });
+        c.appendChild(caja);
+      } else {
+        c.appendChild(grupoOpciones(q.id, q.opciones, S.uso[q.id], v => { S.uso[q.id] = v; guardarSesion(); actualizarAvance(); limpiarFalta('c_' + q.id); verOtra(); }, false, true));
+      }
+      if (otra) {
+        otra.value = S.uso[q.id + '_OTRA'] || '';
+        otra.addEventListener('input', () => { S.uso[q.id + '_OTRA'] = otra.value; guardarSesion(); });
+        c.appendChild(otra); verOtra();
+      }
+      cont.appendChild(c);
+    });
   } else {
     cont.appendChild(eyebrow('seccion', 'Sección ' + String(S.pagina + 1).padStart(2, '0') + ' de ' + String(PAGINAS.length).padStart(2, '0')));
     cont.appendChild(bloqueInstruccion(pag.elementos, pag.bloque));
@@ -876,8 +950,10 @@ function eyebrow(icono, texto){
 function limpiarFalta(id){ const n = $(id); if (n) n.classList.remove('falta'); }
 
 function actualizarAvance(){
-  const total = CFG.items.length + CFG.atencion.length + 4;
+  const nUso = (CFG.preguntasUso || []).length;
+  const total = CFG.items.length + CFG.atencion.length + 4 + nUso;
   let hechas = ['institucion','carrera','edad','usaIA'].filter(k => S.perfil[k]).length;
+  hechas += (CFG.preguntasUso || []).filter(q => { const v = (S.uso || {})[q.id]; return Array.isArray(v) ? v.length : !!v; }).length;
   hechas += Object.keys(S.respuestas).length;
   const pct = Math.min(100, Math.round(hechas / total * 100));
   $('barraAvance').style.width = pct + '%';
@@ -892,6 +968,9 @@ function faltantesPagina(){
     const e = Number(S.perfil.edad);
     if (!Number.isInteger(e) || e < 18 || e > 99) f.push('c_edad');
     return f;
+  }
+  if (pag.tipo === 'uso') {
+    return CFG.preguntasUso.filter(q => { const v = (S.uso || {})[q.id]; return Array.isArray(v) ? !v.length : !v; }).map(q => 'c_' + q.id);
   }
   return pag.elementos.filter(e => !S.respuestas[e.clave]).map(e => 'q_' + e.clave);
 }
@@ -921,7 +1000,9 @@ async function enviar(){
   $('avisoEnvio').innerHTML = '';
   const payload = {
     version: CFG.versionConsentimiento,
+    autoriza: S.autoriza,
     usaIA: S.perfil.usaIA,
+    uso: S.perfil.usaIA === 'SI' ? (S.uso || {}) : {},
     institucion: S.perfil.institucion,
     carrera: S.perfil.carrera,
     edad: Number(S.perfil.edad),
@@ -933,12 +1014,20 @@ async function enviar(){
     const r = await api('enviar', { payload });
     if (!r.ok) throw new Error(r.error || 'No se pudo guardar.');
     borrarSesion();
-    if (S.perfil.usaIA === 'NO') $('txtGracias').textContent = 'Muchas gracias por tu tiempo. Tu respuesta se registró de forma anónima y ya puedes cerrar esta página.';
+    if (S.perfil.usaIA === 'NO') $('txtGracias').textContent = 'Muchas gracias por tu tiempo. Tu respuesta se registró de forma anónima.';
+    if (r.comprobante) { $('txtComprobante').textContent = r.comprobante; $('cajaComprobante').classList.remove('oculto'); }
     mostrar('vGracias');
   } catch (e) {
     $('avisoEnvio').appendChild(el('div', { class: 'aviso error', text: 'No fue posible enviar: ' + e.message + ' Tus respuestas siguen guardadas en esta pestaña; puedes intentarlo nuevamente.' }));
     b.disabled = false; b.textContent = 'Reintentar el envío';
   }
+}
+
+function copiarComprobante(){
+  const t = $('txtComprobante').textContent, b = $('btnCopiar');
+  const listo = () => { b.textContent = 'Copiado'; setTimeout(() => { b.textContent = 'Copiar código'; }, 1600); };
+  if (navigator.clipboard) navigator.clipboard.writeText(t).then(listo).catch(() => window.prompt('Copia este código:', t));
+  else window.prompt('Copia este código:', t);
 }
 
 function pedirRetiro(){
@@ -1045,6 +1134,7 @@ function pintarPanel(s){
   }
 
   $('kConsent').textContent = s.consentimientos;
+  $('kAutorizan').textContent = s.autorizan == null ? '-' : s.autorizan;
   $('kEnvios').textContent = s.envios;
   $('kUsuarios').textContent = s.usuarios;
   $('kNoUsuarios').textContent = s.noUsuarios;
