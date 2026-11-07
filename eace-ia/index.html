@@ -247,7 +247,7 @@
   <div class="marco">
     <div class="iso" aria-hidden="true"><svg viewBox="0 0 64 64"><use href="#i-marca"/></svg></div>
     <div>
-      <div class="rotulo" id="rotulo">Diagnóstico del curso · Estudio de investigación</div>
+      <div class="rotulo" id="rotulo">Diagnóstico · Estudio de investigación</div>
       <h1 id="tituloPublico">Uso de inteligencia artificial en el trabajo académico</h1>
     </div>
   </div>
@@ -290,7 +290,7 @@
         <p class="ayuda">Debes elegir una opción. Cualquiera de las dos es válida y no tiene efecto en tus evaluaciones.</p>
         <div class="opciones lista" role="radiogroup">
           <div class="opcion"><input type="radio" name="autoriza" id="aut_si" value="SI"><label for="aut_si"><span>Sí, autorizo el uso en investigación</span></label></div>
-          <div class="opcion"><input type="radio" name="autoriza" id="aut_no" value="NO"><label for="aut_no"><span>No, solo para el diagnóstico del curso</span></label></div>
+          <div class="opcion"><input type="radio" name="autoriza" id="aut_no" value="NO"><label for="aut_no"><span>No, solo para el diagnóstico de mi curso o programa</span></label></div>
         </div>
       </div>
       <div class="acciones">
@@ -326,7 +326,7 @@
         <span>Tu código de término</span>
         <b id="txtComprobante"></b>
         <button class="btn btn-secundario" type="button" onclick="copiarComprobante()" id="btnCopiar">Copiar código</button>
-        <p class="nota">Pégalo en la actividad de diagnóstico del curso para darla por cumplida. Este código no está vinculado a tus respuestas.</p>
+        <p class="nota">Si te lo pidieron en un curso o programa, pégalo en la actividad de diagnóstico para darla por cumplida. Este código no está vinculado a tus respuestas.</p>
       </div>
     </div>
   </section>
@@ -809,11 +809,22 @@ function construirPaginas(){
   PAGINAS = PAGINAS.concat(bloques);
 }
 
+// Periodo de referencia: «este semestre» para estudiantes universitarios de UDP y UOH (instrumento aprobado);
+// «en los últimos seis meses» para el resto, porque sus programas no se organizan por semestres.
+function periodo(){ return (S.perfil.institucion === 'A' || S.perfil.institucion === 'B') ? 'este semestre' : 'en los últimos seis meses'; }
+
+// Origen del enlace (?origen=ideax&programa=g1). No identifica a la persona.
+const ORIGEN = (() => {
+  const q = new URLSearchParams(location.search);
+  const limpia = v => String(v || '').toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 20);
+  return { origen: limpia(q.get('origen')) || 'directo', programa: limpia(q.get('programa')) };
+})();
+
 function textoInstruccion(elementos){
   const tipos = elementos.map(e => e.tipo);
-  if (tipos.every(t => t === 'LIKERT_ACUERDO')) return 'Indica <strong>qué tan de acuerdo estás</strong> con cada afirmación, pensando en <strong>cómo usas la inteligencia artificial en tus estudios este semestre</strong>. No hay respuestas correctas ni incorrectas.';
-  if (tipos.every(t => t === 'LIKERT_FRECUENCIA')) return 'Indica <strong>con qué frecuencia</strong> te ocurre cada situación en tus estudios este semestre.';
-  return 'Marca la opción que mejor describe <strong>tu uso habitual</strong> de la inteligencia artificial en tus estudios este semestre. Fíjate en que <strong>cada pregunta tiene sus propias opciones</strong>.';
+  if (tipos.every(t => t === 'LIKERT_ACUERDO')) return 'Indica <strong>qué tan de acuerdo estás</strong> con cada afirmación, pensando en <strong>cómo usas la inteligencia artificial en tus estudios ' + periodo() + '</strong>. No hay respuestas correctas ni incorrectas.';
+  if (tipos.every(t => t === 'LIKERT_FRECUENCIA')) return 'Indica <strong>con qué frecuencia</strong> te ocurre cada situación en tus estudios ' + periodo() + '.';
+  return 'Marca la opción que mejor describe <strong>tu uso habitual</strong> de la inteligencia artificial en tus estudios ' + periodo() + '. Fíjate en que <strong>cada pregunta tiene sus propias opciones</strong>.';
 }
 
 function bloqueInstruccion(elementos, bloque){
@@ -862,17 +873,41 @@ function pintarPagina(){
       if (ayuda) c.appendChild(el('p', { class: 'ayuda', text: ayuda }));
       c.appendChild(nodo); return c;
     };
-    cont.appendChild(campo('institucion', '¿En qué institución estudias?', grupoOpciones('institucion', CFG.instituciones, S.perfil.institucion, set('institucion'), false, true)));
-    cont.appendChild(campo('carrera', '¿Qué carrera estudias?', grupoOpciones('carrera', CFG.carreras, S.perfil.carrera, set('carrera'), false, true)));
+    const P = CFG.perfil || {};
+    const grupo = (k, lista) => grupoOpciones(k, lista || [], S.perfil[k], v => { set(k)(v); alCambiarPerfil(k); }, false, true);
+    cont.appendChild(campo('situacion', '¿Cuál es tu situación actual?', grupo('situacion', P.situacion),
+      'Considera como estudio cualquier programa que estés cursando: una carrera, un postgrado, un diplomado o un curso.'));
+    cont.appendChild(campo('nivel', '¿Qué tipo de programa estudias?', grupo('nivel', P.nivel), 'Si estudias más de uno, elige el principal.'));
+    const otraInst = el('input', { type: 'text', class: 'otra-texto', maxlength: '80', placeholder: '¿Cuál?' });
+    otraInst.value = S.perfil.institucionOtra || '';
+    otraInst.addEventListener('input', () => { S.perfil.institucionOtra = otraInst.value; guardarSesion(); limpiarFalta('c_institucion'); });
+    const cInst = campo('institucion', '¿En qué institución estudias?', grupo('institucion', CFG.instituciones));
+    cInst.appendChild(otraInst); cont.appendChild(cInst);
+    cont.appendChild(campo('carrera', '¿Cuál es el área de tu carrera o programa?', grupo('carrera', CFG.carreras)));
 
+    const bloqueTrabajo = el('div', { id: 'bloqueTrabajo' });
+    bloqueTrabajo.appendChild(campo('tipoOrganizacion', '¿En qué tipo de organización trabajas?', grupo('tipoOrganizacion', P.tipoOrganizacion)));
+    bloqueTrabajo.appendChild(campo('sector', '¿A qué sector pertenece?', grupo('sector', P.sector)));
+    bloqueTrabajo.appendChild(campo('cargo', '¿Cuál es el nivel de tu cargo?', grupo('cargo', P.cargo)));
+    bloqueTrabajo.appendChild(campo('tamano', '¿Cuántas personas trabajan en la organización?', grupo('tamano', P.tamano)));
+    cont.appendChild(bloqueTrabajo);
+
+    cont.appendChild(campo('pais', '¿En qué país vives?', grupo('pais', P.pais)));
     const edad = el('input', { type: 'number', class: 'numero', inputmode: 'numeric', min: '18', max: '99', placeholder: 'Años' });
     if (S.perfil.edad) edad.value = S.perfil.edad;
     edad.addEventListener('input', () => { S.perfil.edad = edad.value; guardarSesion(); limpiarFalta('c_edad'); actualizarAvance(); });
     cont.appendChild(campo('edad', '¿Qué edad tienes?', edad));
 
-    cont.appendChild(campo('usaIA', 'Durante este semestre, ¿has usado algún sistema de inteligencia artificial para tus estudios?',
-      grupoOpciones('usaIA', [{ codigo: 'SI', nombre: 'Sí' }, { codigo: 'NO', nombre: 'No' }], S.perfil.usaIA, set('usaIA'), false, true),
-      'Por ejemplo, asistentes conversacionales, generadores de texto o herramientas de resumen.'));
+    const cUsa = campo('usaIA', '', grupo('usaIA', [{ codigo: 'SI', nombre: 'Sí' }, { codigo: 'NO', nombre: 'No' }]),
+      'Por ejemplo, asistentes conversacionales, generadores de texto o herramientas de resumen.');
+    cont.appendChild(cUsa);
+    const alCambiarPerfil = () => {
+      bloqueTrabajo.classList.toggle('oculto', S.perfil.situacion !== 'ESTUDIA_TRABAJA');
+      otraInst.classList.toggle('oculto', S.perfil.institucion !== 'OTRA');
+      cUsa.querySelector('.etiqueta').textContent = (periodo() === 'este semestre' ? 'Durante este semestre' : 'En los últimos seis meses') +
+        ', ¿has usado algún sistema de inteligencia artificial para tus estudios?';
+    };
+    alCambiarPerfil();
   } else if (pag.tipo === 'uso') {
     cont.appendChild(eyebrow('perfil', 'Tu uso de la inteligencia artificial'));
     cont.appendChild(el('h2', { class: 'titulo', text: 'Las herramientas que usas' }));
@@ -951,8 +986,9 @@ function limpiarFalta(id){ const n = $(id); if (n) n.classList.remove('falta'); 
 
 function actualizarAvance(){
   const nUso = (CFG.preguntasUso || []).length;
-  const total = CFG.items.length + CFG.atencion.length + 4 + nUso;
-  let hechas = ['institucion','carrera','edad','usaIA'].filter(k => S.perfil[k]).length;
+  const camposPerfil = ['situacion','nivel','institucion','carrera','pais','edad','usaIA'].concat(S.perfil.situacion === 'ESTUDIA_TRABAJA' ? ['tipoOrganizacion','sector','cargo','tamano'] : []);
+  const total = CFG.items.length + CFG.atencion.length + camposPerfil.length + nUso;
+  let hechas = camposPerfil.filter(k => S.perfil[k]).length;
   hechas += (CFG.preguntasUso || []).filter(q => { const v = (S.uso || {})[q.id]; return Array.isArray(v) ? v.length : !!v; }).length;
   hechas += Object.keys(S.respuestas).length;
   const pct = Math.min(100, Math.round(hechas / total * 100));
@@ -964,7 +1000,11 @@ function faltantesPagina(){
   const pag = PAGINAS[S.pagina];
   if (pag.tipo === 'perfil') {
     const f = [];
-    ['institucion','carrera','usaIA'].forEach(k => { if (!S.perfil[k]) f.push('c_' + k); });
+    ['situacion','nivel','institucion','carrera'].forEach(k => { if (!S.perfil[k]) f.push('c_' + k); });
+    if (S.perfil.institucion === 'OTRA' && String(S.perfil.institucionOtra || '').trim().length < 2) f.push('c_institucion');
+    if (S.perfil.situacion === 'ESTUDIA_TRABAJA') ['tipoOrganizacion','sector','cargo','tamano'].forEach(k => { if (!S.perfil[k]) f.push('c_' + k); });
+    if (!S.perfil.pais) f.push('c_pais');
+    if (!S.perfil.usaIA) f.push('c_usaIA');
     const e = Number(S.perfil.edad);
     if (!Number.isInteger(e) || e < 18 || e > 99) f.push('c_edad');
     return f;
@@ -987,7 +1027,7 @@ function irPagina(delta){
   // Quien no usa IA termina después de la clasificación
   if (S.pagina === 0 && S.perfil.usaIA === 'NO') {
     confirmar('Cuestionario completo',
-      'Como indicaste que no has usado sistemas de inteligencia artificial en tus estudios este semestre, el cuestionario termina aquí. ¿Enviamos tu respuesta? Si marcaste esa opción por error, vuelve y corrígela.',
+      'Como indicaste que no has usado sistemas de inteligencia artificial en tus estudios ' + periodo() + ', el cuestionario termina aquí. ¿Enviamos tu respuesta? Si marcaste esa opción por error, vuelve y corrígela.',
       'Enviar y terminar', enviar);
     return;
   }
@@ -1004,8 +1044,12 @@ async function enviar(){
     usaIA: S.perfil.usaIA,
     uso: S.perfil.usaIA === 'SI' ? (S.uso || {}) : {},
     institucion: S.perfil.institucion,
+    institucionOtra: S.perfil.institucionOtra || '',
     carrera: S.perfil.carrera,
     edad: Number(S.perfil.edad),
+    situacion: S.perfil.situacion, nivel: S.perfil.nivel, pais: S.perfil.pais,
+    tipoOrganizacion: S.perfil.tipoOrganizacion || '', sector: S.perfil.sector || '', cargo: S.perfil.cargo || '', tamano: S.perfil.tamano || '',
+    origen: ORIGEN.origen, programaOrigen: ORIGEN.programa,
     dispositivo: matchMedia('(pointer:coarse)').matches ? 'movil' : 'escritorio',
     duracion: Math.round((Date.now() - (S.inicio || Date.now())) / 1000),
     respuestas: S.perfil.usaIA === 'SI' ? S.respuestas : {}
