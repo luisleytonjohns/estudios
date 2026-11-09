@@ -134,6 +134,9 @@
   .comprobante{margin:22px auto 0;max-width:420px;display:grid;gap:10px;justify-items:center;padding:18px;border:1.5px dashed var(--campo);border-radius:10px;background:var(--campo-suave)}
   .comprobante span{font-size:13px;color:var(--tenue);text-transform:uppercase;letter-spacing:.08em}
   .comprobante b{font:600 28px/1 var(--mono);color:var(--azul);letter-spacing:.06em;user-select:all}
+  .selector{display:block;width:100%;max-width:520px;margin-top:8px;padding:11px 12px;border:1.5px solid var(--borde);border-radius:8px;font:15px var(--texto);color:var(--tinta);background:#fff}
+  .selector:focus,.otra-texto:focus{outline:none;border-color:var(--campo)}
+  .subetiqueta{display:block;font-size:13px;font-weight:600;color:var(--tenue);margin-top:12px}
   .otra-texto{margin-top:8px;width:100%;max-width:420px;padding:10px 12px;border:1.5px solid var(--borde);border-radius:8px;font:15px var(--texto)}
   input.numero{width:120px;padding:11px 12px;border:1.5px solid var(--borde);border-radius:8px;font:500 16px var(--texto);color:var(--azul)}
   input.numero:focus{outline:none;border-color:var(--campo)}
@@ -878,11 +881,9 @@ function pintarPagina(){
     cont.appendChild(campo('situacion', '¿Cuál es tu situación actual?', grupo('situacion', P.situacion),
       'Considera como estudio cualquier programa que estés cursando: una carrera, un postgrado, un diplomado o un curso.'));
     cont.appendChild(campo('nivel', '¿Qué tipo de programa estudias?', grupo('nivel', P.nivel), 'Si estudias más de uno, elige el principal.'));
-    const otraInst = el('input', { type: 'text', class: 'otra-texto', maxlength: '80', placeholder: '¿Cuál?' });
-    otraInst.value = S.perfil.institucionOtra || '';
-    otraInst.addEventListener('input', () => { S.perfil.institucionOtra = otraInst.value; guardarSesion(); limpiarFalta('c_institucion'); });
-    const cInst = campo('institucion', '¿En qué institución estudias?', grupo('institucion', CFG.instituciones));
-    cInst.appendChild(otraInst); cont.appendChild(cInst);
+    const inst = nodoInstitucion(P.pais || [], () => alCambiarPerfil());
+    cont.appendChild(campo('institucion', '¿En qué institución estudias?', inst.nodo,
+      'Elige primero el país de tu institución. Si estudias en línea, es el país donde está la institución: IDEAX y las universidades chilenas están en Chile.'));
     cont.appendChild(campo('carrera', '¿Cuál es el área de tu carrera o programa?', grupo('carrera', CFG.carreras)));
 
     const bloqueTrabajo = el('div', { id: 'bloqueTrabajo' });
@@ -903,7 +904,6 @@ function pintarPagina(){
     cont.appendChild(cUsa);
     const alCambiarPerfil = () => {
       bloqueTrabajo.classList.toggle('oculto', S.perfil.situacion !== 'ESTUDIA_TRABAJA');
-      otraInst.classList.toggle('oculto', S.perfil.institucion !== 'OTRA');
       cUsa.querySelector('.etiqueta').textContent = (periodo() === 'este semestre' ? 'Durante este semestre' : 'En los últimos seis meses') +
         ', ¿has usado algún sistema de inteligencia artificial para tus estudios?';
     };
@@ -975,6 +975,103 @@ function pintarPagina(){
   window.scrollTo({ top: 0 });
 }
 
+/* Institución: país y listado de ese país, con buscador. El catálogo se pide al motor de datos
+   por país y queda en memoria. «Otra institución» abre un campo de texto y el tipo. */
+const CATALOGO = {};
+async function catalogoDe(pais){
+  if (CATALOGO[pais]) return CATALOGO[pais];
+  if ((CFG.paisesConCatalogo || []).indexOf(pais) === -1) return (CATALOGO[pais] = []);
+  try {
+    const r = await fetch(API_URL + '?action=instituciones&pais=' + encodeURIComponent(pais));
+    const d = await r.json();
+    return (CATALOGO[pais] = d.ok ? d.lista : []);
+  } catch (e) { return []; }
+}
+
+function nodoInstitucion(paises, alCambiar){
+  const P = S.perfil;
+  // Sesiones guardadas con la versión anterior: A, B e IDEAX son instituciones de Chile
+  if (!P.institucionPais && ['A', 'B', 'IDEAX'].indexOf(P.institucion) !== -1) P.institucionPais = 'CL';
+  const nodo = el('div');
+  const selPais = el('select', { class: 'selector', 'aria-label': 'País de tu institución' });
+  selPais.appendChild(el('option', { value: '', text: 'Selecciona el país de tu institución' }));
+  paises.forEach(o => selPais.appendChild(el('option', { value: o.codigo, text: o.nombre })));
+  selPais.value = P.institucionPais || '';
+
+  const zonaLista = el('div');
+  const buscador = el('input', { type: 'search', class: 'selector', placeholder: 'Escribe para buscar tu institución', 'aria-label': 'Buscar institución', autocomplete: 'off' });
+  const selInst = el('select', { class: 'selector', 'aria-label': 'Institución' });
+  zonaLista.append(el('span', { class: 'subetiqueta', text: 'Institución' }), buscador, selInst);
+
+  const zonaOtra = el('div');
+  const otra = el('input', { type: 'text', class: 'otra-texto', maxlength: '80', placeholder: 'Nombre completo de tu institución', 'aria-label': 'Nombre de tu institución' });
+  otra.value = P.institucionOtra || '';
+  const selTipo = el('select', { class: 'selector', 'aria-label': 'Tipo de institución' });
+  selTipo.appendChild(el('option', { value: '', text: '¿Qué tipo de institución es?' }));
+  (CFG.tiposInstitucion || []).forEach(t => selTipo.appendChild(el('option', { value: t.codigo, text: t.nombre })));
+  selTipo.value = P.institucionTipo || '';
+  zonaOtra.append(el('span', { class: 'subetiqueta', text: 'Tu institución no está en la lista' }), otra, selTipo);
+  nodo.append(selPais, zonaLista, zonaOtra);
+
+  const GRUPOS = [['UNIVERSIDAD', 'Universidades'], ['IP', 'Institutos profesionales'], ['CFT', 'Centros de formación técnica'],
+    ['FORMACION_CONTINUA', 'Formación continua'], ['OTRA_IES', 'Otras instituciones de educación superior']];
+  const FRECUENTES = ['A', 'B', 'IDEAX'];
+  const normal = t => String(t).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+  let lista = [];
+
+  const pintarLista = () => {
+    const q = normal(buscador.value.trim());
+    const visibles = q ? lista.filter(x => normal(x.nombre).indexOf(q) !== -1) : lista;
+    selInst.innerHTML = '';
+    selInst.appendChild(el('option', { value: '', text: lista.length ? (q ? visibles.length + ' resultados: elige tu institución' : 'Elige tu institución') : 'Elige una opción' }));
+    const frec = visibles.filter(x => FRECUENTES.indexOf(x.codigo) !== -1);
+    if (frec.length) { const g = el('optgroup', { label: 'Más frecuentes' }); frec.forEach(x => g.appendChild(el('option', { value: x.codigo, text: x.nombre }))); selInst.appendChild(g); }
+    GRUPOS.forEach(([tipo, rotulo]) => {
+      const xs = visibles.filter(x => x.tipo === tipo && FRECUENTES.indexOf(x.codigo) === -1);
+      if (!xs.length) return;
+      const g = el('optgroup', { label: rotulo });
+      xs.forEach(x => g.appendChild(el('option', { value: x.codigo, text: x.nombre })));
+      selInst.appendChild(g);
+    });
+    selInst.appendChild(el('option', { value: 'OTRA', text: 'Otra institución (no está en la lista)' }));
+    if (P.institucion && (P.institucion === 'OTRA' || visibles.some(x => x.codigo === P.institucion))) selInst.value = P.institucion;
+  };
+
+  const verZonas = () => {
+    zonaLista.classList.toggle('oculto', !P.institucionPais || !lista.length);
+    zonaOtra.classList.toggle('oculto', !P.institucionPais || P.institucion !== 'OTRA');
+  };
+
+  const elegir = v => {
+    P.institucion = v; guardarSesion(); actualizarAvance(); limpiarFalta('c_institucion'); verZonas(); alCambiar();
+  };
+
+  const cargarPais = async () => {
+    const pais = P.institucionPais;
+    lista = [];
+    if (!pais) { verZonas(); return; }
+    selInst.innerHTML = ''; selInst.appendChild(el('option', { value: '', text: 'Cargando instituciones…' }));
+    zonaLista.classList.remove('oculto');
+    lista = await catalogoDe(pais);
+    if (pais !== P.institucionPais) return;
+    buscador.classList.toggle('oculto', lista.length < 12);
+    // Sin listado para ese país: se escribe el nombre
+    if (!lista.length && P.institucion !== 'OTRA') { P.institucion = 'OTRA'; guardarSesion(); alCambiar(); }
+    pintarLista(); verZonas();
+  };
+
+  selPais.addEventListener('change', () => {
+    P.institucionPais = selPais.value; P.institucion = ''; buscador.value = '';
+    guardarSesion(); actualizarAvance(); limpiarFalta('c_institucion'); alCambiar(); cargarPais();
+  });
+  buscador.addEventListener('input', pintarLista);
+  selInst.addEventListener('change', () => elegir(selInst.value));
+  otra.addEventListener('input', () => { P.institucionOtra = otra.value; guardarSesion(); limpiarFalta('c_institucion'); });
+  selTipo.addEventListener('change', () => { P.institucionTipo = selTipo.value; guardarSesion(); });
+  cargarPais();
+  return { nodo };
+}
+
 function eyebrow(icono, texto){
   const d = el('div', { class: 'eyebrow' });
   d.innerHTML = '<svg class="ico" aria-hidden="true"><use href="#i-' + icono + '"/></svg>';
@@ -1001,6 +1098,7 @@ function faltantesPagina(){
   if (pag.tipo === 'perfil') {
     const f = [];
     ['situacion','nivel','institucion','carrera'].forEach(k => { if (!S.perfil[k]) f.push('c_' + k); });
+    if (!S.perfil.institucionPais) f.push('c_institucion');
     if (S.perfil.institucion === 'OTRA' && String(S.perfil.institucionOtra || '').trim().length < 2) f.push('c_institucion');
     if (S.perfil.situacion === 'ESTUDIA_TRABAJA') ['tipoOrganizacion','sector','cargo','tamano'].forEach(k => { if (!S.perfil[k]) f.push('c_' + k); });
     if (!S.perfil.pais) f.push('c_pais');
@@ -1044,7 +1142,9 @@ async function enviar(){
     usaIA: S.perfil.usaIA,
     uso: S.perfil.usaIA === 'SI' ? (S.uso || {}) : {},
     institucion: S.perfil.institucion,
-    institucionOtra: S.perfil.institucionOtra || '',
+    institucionOtra: S.perfil.institucion === 'OTRA' ? (S.perfil.institucionOtra || '') : '',
+    institucionPais: S.perfil.institucionPais || '',
+    institucionTipo: S.perfil.institucion === 'OTRA' ? (S.perfil.institucionTipo || '') : '',
     carrera: S.perfil.carrera,
     edad: Number(S.perfil.edad),
     situacion: S.perfil.situacion, nivel: S.perfil.nivel, pais: S.perfil.pais,
@@ -1187,7 +1287,7 @@ function pintarPanel(s){
   // Avance por institución respecto de la meta
   const bi = $('barrasInst'); bi.innerHTML = '';
   const conMeta = [{ nombre: 'Total analizable', n: s.usuarios, meta: s.meta }]
-    .concat(s.porInstitucion.map(x => ({ nombre: x.nombre + ' (' + x.codigo + ')', n: x.n, meta: null })));
+    .concat(s.porInstitucion.map(x => ({ nombre: x.nombre, n: x.n, meta: null })));
   conMeta.forEach(x => {
     const pct = x.meta ? Math.min(100, x.n / x.meta * 100) : (s.usuarios ? x.n / s.usuarios * 100 : 0);
     const barra = el('div', { class: 'barra' }, [el('span')]);
