@@ -893,7 +893,12 @@ function pintarPagina(){
     bloqueTrabajo.appendChild(campo('tamano', '¿Cuántas personas trabajan en la organización?', grupo('tamano', P.tamano)));
     cont.appendChild(bloqueTrabajo);
 
-    cont.appendChild(campo('pais', '¿En qué país vives?', grupo('pais', P.pais)));
+    const selVive = el('select', { class: 'selector', 'aria-label': 'País donde vives' });
+    selVive.appendChild(el('option', { value: '', text: 'Selecciona tu país' }));
+    (P.pais || []).forEach(o => selVive.appendChild(el('option', { value: o.codigo, text: o.nombre })));
+    selVive.value = S.perfil.pais || '';
+    selVive.addEventListener('change', () => set('pais')(selVive.value));
+    cont.appendChild(campo('pais', '¿En qué país vives?', selVive));
     const edad = el('input', { type: 'number', class: 'numero', inputmode: 'numeric', min: '18', max: '99', placeholder: 'Años' });
     if (S.perfil.edad) edad.value = S.perfil.edad;
     edad.addEventListener('input', () => { S.perfil.edad = edad.value; guardarSesion(); limpiarFalta('c_edad'); actualizarAvance(); });
